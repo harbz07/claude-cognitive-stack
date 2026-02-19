@@ -6,12 +6,11 @@ module.exports = {
       args: 'wrangler pages dev dist --d1=cognitive-runtime-production --local --ip 0.0.0.0 --port 3000',
       env: {
         NODE_ENV: 'development',
-        OPENAI_API_KEY: 'gsk-eyJjb2dlbl9pZCI6ImI4YWY5ZTQ5LWUxM2YtNGRiZC1iZjJiLThhNThkZGYxNDI2MyIsImtleV9pZCI6ImJjYmU2ODUwLTc4MWYtNGQzMy1hNTNjLWQzNzIyNTYwODAwMiIsImN0aW1lIjoxNzcxNDYwNjk4LCJjbGF1ZGVfYmlnX21vZGVsIjpudWxsLCJjbGF1ZGVfbWlkZGxlX21vZGVsIjpudWxsLCJjbGF1ZGVfc21hbGxfbW9kZWwiOm51bGx9fFMgdMbW-CLhKOOtOtgIb9DdIaZ76fWPND7GFVi3gyal',
-        OPENAI_BASE_URL: 'https://www.genspark.ai/api/llm_proxy/v1',
-        MASTER_KEY: 'dev-master-key',
-        // Needed for wrangler to start in non-interactive mode
-        // AI binding will gracefully fall back to keyword retrieval in local dev
-        CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || 'local-dev-placeholder',
+        // Set these in .dev.vars or environment — never commit secrets
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || 'https://www.genspark.ai/api/llm_proxy/v1',
+        MASTER_KEY: process.env.MASTER_KEY || 'dev-master-key',
+        CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || '',
       },
       watch: false,
       instances: 1,
@@ -19,3 +18,4 @@ module.exports = {
     },
   ],
 }
+

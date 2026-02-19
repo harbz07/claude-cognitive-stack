@@ -15,10 +15,12 @@ dist/
 node_modules/
 .wrangler
 
-# env
+# env / secrets
 .env
-.env.production
+.env.*
+!.env.example
 .dev.vars
+!.dev.vars.example
 
 # logs
 logs/
@@ -31,3 +33,6 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+*.jpg
+*.jpeg
+*.png
