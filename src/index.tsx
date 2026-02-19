@@ -10,6 +10,7 @@ import { authMiddleware, optionalAuth } from './middleware/auth'
 import { chat } from './routes/chat'
 import { memory } from './routes/memory'
 import { traces } from './routes/traces'
+import { projects } from './routes/projects'
 import { StorageService } from './services/storage'
 
 export type Env = {
@@ -62,10 +63,12 @@ app.get('/api/init', async (c) => {
 app.use('/api/chat/*', authMiddleware)
 app.use('/api/memory/*', authMiddleware)
 app.use('/api/traces/*', authMiddleware)
+app.use('/api/projects/*', authMiddleware)
 
 app.route('/api/chat', chat)
 app.route('/api/memory', memory)
 app.route('/api/traces', traces)
+app.route('/api/projects', projects)
 
 // ── Skills list (public) ──────────────────────────────────────
 app.get('/api/skills', async (c) => {

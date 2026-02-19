@@ -1,8 +1,9 @@
 // ============================================================
-// RETRIEVAL — Semantic + keyword memory retrieval
+// RETRIEVAL — L2 memory scoring + candidate building
+// Feeds into Thalamus alongside RAG results.
 // ============================================================
 
-import type { MemoryItem, ContextCandidate, RouterDecision } from '../types'
+import type { MemoryItem, ContextCandidate, WernickeDecision, Citation } from '../types'
 import { estimateTokens, computeDecay } from '../config'
 import { StorageService } from './storage'
 
@@ -14,30 +15,34 @@ export class RetrievalService {
     session_id: string
     project_id?: string
     query: string
-    decision: RouterDecision
+    decision: WernickeDecision
     limit?: number
   }): Promise<ContextCandidate[]> {
     const { user_id, session_id, project_id, query, decision, limit = 30 } = params
 
     // Fetch raw memory items from storage
+    // Respect project namespace: if project_id set, scope to it + global
     const rawItems = await this.storage.queryMemory({
       user_id,
       session_id,
       project_id,
       exclude_high_decay: true,
-      limit: limit * 2, // over-fetch, then filter
+      limit: limit * 2,
     })
 
     if (rawItems.length === 0) return []
 
-    // Score each item
+    // Score each item across 6 dimensions
     const scored = rawItems.map((item): ContextCandidate => {
       const relevanceScore = this.computeTextRelevance(query, item.content)
-      const recencyScore = this.computeRecency(item.last_accessed)
-      const scopeScore = this.computeScopeMatch(item.scope, decision.memory_scopes)
-      const typeScore = this.computeTypeScore(item.type)
-      const decayPenalty = item.decay_score ?? 0
-      const skillWeight = this.computeSkillWeight(item.tags, decision.activated_skills.map((s) => s.id))
+      const recencyScore   = this.computeRecency(item.last_accessed)
+      const scopeScore     = this.computeScopeMatch(item.scope, decision.memory_scopes)
+      const typeScore      = this.computeTypeScore(item.type)
+      const decayPenalty   = item.decay_score ?? 0
+      const skillWeight    = this.computeSkillWeight(
+        item.tags,
+        decision.activated_skills.map((s) => s.id),
+      )
 
       const finalScore =
         0.35 * relevanceScore +
@@ -47,28 +52,39 @@ export class RetrievalService {
         0.10 * (1 - decayPenalty) +
         0.10 * skillWeight
 
+      // Build citation for provenance
+      const citation: Citation = {
+        source:          `memory_${item.type}_${item.id.slice(0, 8)}`,
+        source_type:     'memory',
+        memory_id:       item.id,
+        relevance:       finalScore,
+        content_snippet: item.content.slice(0, 120),
+      }
+
       return {
         id: item.id,
         source: 'l2_memory',
         content: item.content,
-        label: `[${item.type}:${item.scope}] ${item.tags?.join(', ') || 'memory'}`,
+        label: `[${item.type}:${item.scope}] ${(item.tags ?? []).join(', ') || 'memory'}`,
         token_count: item.token_count || estimateTokens(item.content),
+        citation,
         scores: {
-          relevance: relevanceScore,
-          recency: recencyScore,
-          scope_match: scopeScore,
+          relevance:     relevanceScore,
+          recency:       recencyScore,
+          scope_match:   scopeScore,
           type_priority: typeScore,
           decay_penalty: decayPenalty,
-          skill_weight: skillWeight,
-          final: finalScore,
+          skill_weight:  skillWeight,
+          final:         finalScore,
         },
         metadata: {
-          memory_id: item.id,
-          type: item.type,
-          scope: item.scope,
-          tags: item.tags,
-          confidence: item.confidence,
-          created_at: item.created_at,
+          memory_id:   item.id,
+          type:        item.type,
+          scope:       item.scope,
+          tags:        item.tags,
+          confidence:  item.confidence,
+          created_at:  item.created_at,
+          project_id:  item.project_id,
         },
         dropped: false,
       }
@@ -107,19 +123,19 @@ export class RetrievalService {
 
   private computeRecency(lastAccessed: string): number {
     const hoursAgo = (Date.now() - new Date(lastAccessed).getTime()) / (1000 * 60 * 60)
-    // Exponential decay: full score at 0h, 0.5 at 24h, ~0.1 at 72h
+    // Exponential decay: full at 0h, 0.5 at 24h, ~0.1 at 72h
     return Math.exp(-0.028 * hoursAgo)
   }
 
   private computeScopeMatch(itemScope: string, requestedScopes: string[]): number {
-    if (itemScope === 'global') return 1.0
-    if (requestedScopes.includes(itemScope)) return 0.9
+    if (itemScope === 'global')                    return 1.0
+    if (requestedScopes.includes(itemScope))       return 0.9
     return 0.3
   }
 
   private computeTypeScore(type: string): number {
     const scores: Record<string, number> = {
-      summary: 1.0,
+      summary:  1.0,
       semantic: 0.85,
       episodic: 0.65,
     }
@@ -127,7 +143,7 @@ export class RetrievalService {
   }
 
   private computeSkillWeight(tags: string[], activeSkillIds: string[]): number {
-    if (!tags || tags.length === 0) return 0
+    if (!tags || tags.length === 0 || activeSkillIds.length === 0) return 0
     const overlap = tags.filter((t) => activeSkillIds.includes(t)).length
     return Math.min(1, overlap / Math.max(1, activeSkillIds.length))
   }
