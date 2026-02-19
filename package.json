@@ -1,0 +1,29 @@
+{
+  "name": "cognitive-runtime",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:sandbox": "wrangler pages dev dist --d1=cognitive-runtime-production --local --ip 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "preview": "wrangler pages dev dist",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name cognitive-runtime",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "db:migrate:local": "wrangler d1 migrations apply cognitive-runtime-production --local",
+    "db:migrate:prod": "wrangler d1 migrations apply cognitive-runtime-production"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.77.0",
+    "@hono/zod-validator": "^0.7.6",
+    "hono": "^4.11.10",
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250705.0",
+    "@hono/vite-build": "^1.2.0",
+    "@hono/vite-cloudflare-pages": "^0.4.3",
+    "@hono/vite-dev-server": "^0.18.2",
+    "vite": "^6.3.5",
+    "wrangler": "^4.4.0"
+  }
+}
