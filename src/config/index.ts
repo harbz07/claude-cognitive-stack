@@ -13,7 +13,7 @@ export const DEFAULT_LOADOUT: Loadout = {
     l1_window_tokens: 2000,
     l2_budget_tokens: 3000,
     skills: 1500,
-    response_reserve: 2048,
+    response_reserve: 4096,   // reasoning models need headroom
   },
   thresholds: {
     thalamus_threshold: 0.72,          // spec: 0.72 — gate for Thalamus inclusion
@@ -28,13 +28,13 @@ export const DEFAULT_LOADOUT: Loadout = {
 
 export const FAST_LOADOUT: Loadout = {
   id: 'fast',
-  name: 'Fast / Cheap (Haiku)',
+  name: 'Fast / Cheap (gpt-5-mini)',
   model_profile: 'fast',
   budgets: {
     l1_window_tokens: 1000,
     l2_budget_tokens: 1000,
     skills: 500,
-    response_reserve: 1024,
+    response_reserve: 2048,   // reasoning models need headroom
   },
   thresholds: {
     thalamus_threshold: 0.72,
