@@ -381,6 +381,50 @@ export class StorageService {
       .run()
   }
 
+  // Fetch items that have embeddings stored — for cosine ranking
+  async queryMemoryWithEmbeddings(params: {
+    user_id: string
+    session_id?: string
+    project_id?: string
+    scope?: string
+    limit?: number
+  }): Promise<any[]> {
+    const conditions: string[] = ['user_id = ?', 'embedding IS NOT NULL']
+    const bindings: any[] = [params.user_id]
+
+    if (params.scope) {
+      conditions.push('(scope = ? OR scope = ?)')
+      bindings.push(params.scope, 'global')
+    }
+    if (params.session_id) {
+      conditions.push("(session_id = ? OR scope IN ('project','global'))")
+      bindings.push(params.session_id)
+    }
+    // Always exclude heavily decayed items
+    conditions.push('decay_score < 0.85')
+
+    const limit = params.limit ?? 100
+    const sql = `
+      SELECT * FROM memory_items
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY last_accessed DESC, confidence DESC
+      LIMIT ${limit}
+    `
+    const result = await this.db.prepare(sql).bind(...bindings).all()
+    return result.results.map((r) => ({
+      ...r,
+      embedding: r.embedding ? JSON.parse(r.embedding as string) : null,
+      tags: JSON.parse(r.tags as string),
+    }))
+  }
+
+  async updateMemoryEmbedding(id: string, embedding: number[]): Promise<void> {
+    await this.db
+      .prepare('UPDATE memory_items SET embedding = ? WHERE id = ?')
+      .bind(JSON.stringify(embedding), id)
+      .run()
+  }
+
   async updateDecayScores(items: Array<{ id: string; decay_score: number }>): Promise<void> {
     for (const item of items) {
       await this.db

@@ -41,7 +41,7 @@ chat.post('/', zValidator('json', chatSchema), async (c) => {
   }
 
   const storage = new StorageService(c.env.DB)
-  const orchestrator = new CognitiveOrchestrator(storage)
+  const orchestrator = new CognitiveOrchestrator(storage, c.env.AI ?? null)
 
   try {
     const response = await orchestrator.process(
@@ -56,7 +56,7 @@ chat.post('/', zValidator('json', chatSchema), async (c) => {
 
     // Fire-and-forget consolidation if queued
     if (response.consolidation_queued) {
-      const worker = new ConsolidationWorker(storage, apiKey, baseUrl)
+      const worker = new ConsolidationWorker(storage, apiKey, baseUrl, c.env.AI ?? null)
       worker.processPendingJobs().catch(() => {})
     }
 

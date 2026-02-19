@@ -34,26 +34,29 @@ import { RagSearchService }  from './rag'
 import { ThalamusService }  from './thalamus'
 import { InsulaService }    from './insula'
 import { ModelAdapter }     from './model-adapter'
+import { EmbeddingService } from './embeddings'
 import { ConsolidationWorker } from '../workers/consolidation'
 import { DEFAULT_LOADOUT, LOADOUT_MAP, estimateTokens } from '../config'
 
 export class CognitiveOrchestrator {
-  private wernicke:  WernickeRouter
-  private retrieval: RetrievalService
-  private rag:       RagSearchService
-  private thalamus:  ThalamusService
-  private insula:    InsulaService
-  private model:     ModelAdapter
-  private storage:   StorageService
+  private wernicke:   WernickeRouter
+  private retrieval:  RetrievalService
+  private rag:        RagSearchService
+  private thalamus:   ThalamusService
+  private insula:     InsulaService
+  private model:      ModelAdapter
+  private storage:    StorageService
+  private embeddings: EmbeddingService
 
-  constructor(storage: StorageService) {
-    this.storage   = storage
-    this.wernicke  = new WernickeRouter()
-    this.retrieval = new RetrievalService(storage)
-    this.rag       = new RagSearchService(storage)
-    this.thalamus  = new ThalamusService()
-    this.insula    = new InsulaService()
-    this.model     = new ModelAdapter()
+  constructor(storage: StorageService, ai?: Ai | null) {
+    this.storage    = storage
+    this.embeddings = new EmbeddingService(ai ?? null)
+    this.wernicke   = new WernickeRouter()
+    this.retrieval  = new RetrievalService(storage)
+    this.rag        = new RagSearchService(storage)
+    this.thalamus   = new ThalamusService()
+    this.insula     = new InsulaService()
+    this.model      = new ModelAdapter()
   }
 
   async process(
@@ -127,12 +130,16 @@ export class CognitiveOrchestrator {
     // ── STAGE 3: RAG SEARCH ───────────────────────────────────
     const t2 = Date.now()
 
-    // 3a. L2 Memory retrieval
+    // 3a. Embed query for semantic retrieval (non-blocking fallback if AI unavailable)
+    const queryEmbedding = await this.embeddings.embed(req.message)
+
+    // 3b. L2 Memory retrieval (with semantic embedding if available)
     const memoryCandidates = await this.retrieval.retrieve({
-      user_id:    req.user_id,
-      session_id: session.session_id,
-      project_id: req.project_id ?? session.project_id ?? undefined,
-      query:      req.message,
+      user_id:        req.user_id,
+      session_id:     session.session_id,
+      project_id:     req.project_id ?? session.project_id ?? undefined,
+      query:          req.message,
+      queryEmbedding: queryEmbedding,
       decision,
       limit: 25,
     })
@@ -153,6 +160,8 @@ export class CognitiveOrchestrator {
       memory_candidates: memoryCandidates.length,
       rag_candidates:    ragCandidates.length,
       citations_found:   ragCitations.length,
+      semantic_enabled:  queryEmbedding !== null,
+      embedding_dims:    queryEmbedding?.length ?? 0,
       top_rag_scores:    ragCandidates.slice(0, 3).map((c) => ({
         label: c.label,
         score: c.scores.final.toFixed(3),

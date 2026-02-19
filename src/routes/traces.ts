@@ -60,7 +60,7 @@ traces.post('/consolidate', async (c) => {
   }
 
   const storage = new StorageService(c.env.DB)
-  const worker = new ConsolidationWorker(storage, apiKey, baseUrl)
+  const worker = new ConsolidationWorker(storage, apiKey, baseUrl, c.env.AI ?? null)
   const result = await worker.processPendingJobs()
 
   return c.json({ message: 'Consolidation triggered', ...result })

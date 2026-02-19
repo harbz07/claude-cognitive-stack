@@ -1,11 +1,17 @@
 // ============================================================
-// RETRIEVAL — L2 memory scoring + candidate building
-// Feeds into Thalamus alongside RAG results.
+// RETRIEVAL — Semantic + keyword memory retrieval
+// When a query embedding is available:
+//   final_score = 0.40*semantic + 0.20*recency + 0.15*scope
+//               + 0.10*type_priority + 0.10*(1-decay) + 0.05*skill_weight
+// When no embedding (graceful fallback):
+//   final_score = 0.45*relevance + 0.20*recency + 0.15*scope
+//               + 0.10*type_priority + 0.05*(1-decay) + 0.05*skill_weight
 // ============================================================
 
-import type { MemoryItem, ContextCandidate, WernickeDecision, Citation } from '../types'
-import { estimateTokens, computeDecay } from '../config'
+import type { ContextCandidate, RouterDecision } from '../types'
+import { estimateTokens } from '../config'
 import { StorageService } from './storage'
+import { EmbeddingService } from './embeddings'
 
 export class RetrievalService {
   constructor(private storage: StorageService) {}
@@ -15,26 +21,60 @@ export class RetrievalService {
     session_id: string
     project_id?: string
     query: string
-    decision: WernickeDecision
+    queryEmbedding: number[] | null   // pre-computed by orchestrator
+    decision: RouterDecision
     limit?: number
   }): Promise<ContextCandidate[]> {
-    const { user_id, session_id, project_id, query, decision, limit = 30 } = params
+    const { user_id, session_id, project_id, query, queryEmbedding, decision, limit = 30 } = params
 
-    // Fetch raw memory items from storage
-    // Respect project namespace: if project_id set, scope to it + global
-    const rawItems = await this.storage.queryMemory({
-      user_id,
-      session_id,
-      project_id,
-      exclude_high_decay: true,
-      limit: limit * 2,
-    })
+    // ── 1. Fetch all candidates ────────────────────────────────
+    // Always fetch keyword-based pool
+    const [keywordItems, semanticItems] = await Promise.all([
+      this.storage.queryMemory({
+        user_id,
+        session_id,
+        project_id,
+        exclude_high_decay: true,
+        limit: limit * 2,
+      }),
+      // Separately fetch items with embeddings for cosine ranking
+      queryEmbedding
+        ? this.storage.queryMemoryWithEmbeddings({
+            user_id,
+            session_id,
+            project_id,
+            limit: 150,
+          })
+        : Promise.resolve([]),
+    ])
 
-    if (rawItems.length === 0) return []
+    if (keywordItems.length === 0 && semanticItems.length === 0) return []
 
-    // Score each item across 6 dimensions
-    const scored = rawItems.map((item): ContextCandidate => {
-      const relevanceScore = this.computeTextRelevance(query, item.content)
+    // ── 2. Build unified candidate set (deduplicated by id) ────
+    const seen = new Set<string>()
+    const allItems: any[] = []
+    for (const item of [...keywordItems, ...semanticItems]) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id)
+        allItems.push(item)
+      }
+    }
+
+    // ── 3. Pre-compute cosine similarities if we have a query embedding
+    const similarityMap = new Map<string, number>()
+    if (queryEmbedding && semanticItems.length > 0) {
+      const ranked = EmbeddingService.rankBySimilarity(queryEmbedding, semanticItems)
+      for (const r of ranked) {
+        similarityMap.set(r.id, r.similarity)
+      }
+    }
+
+    const hasEmbeddings = similarityMap.size > 0
+
+    // ── 4. Score every candidate ───────────────────────────────
+    const scored = allItems.map((item): ContextCandidate => {
+      const semanticScore  = similarityMap.get(item.id) ?? 0
+      const keywordScore   = this.computeTextRelevance(query, item.content)
       const recencyScore   = this.computeRecency(item.last_accessed)
       const scopeScore     = this.computeScopeMatch(item.scope, decision.memory_scopes)
       const typeScore      = this.computeTypeScore(item.type)
@@ -44,32 +84,29 @@ export class RetrievalService {
         decision.activated_skills.map((s) => s.id),
       )
 
-      const finalScore =
-        0.35 * relevanceScore +
-        0.20 * recencyScore +
-        0.15 * scopeScore +
-        0.10 * typeScore +
-        0.10 * (1 - decayPenalty) +
-        0.10 * skillWeight
-
-      // Build citation for provenance
-      const citation: Citation = {
-        source:          `memory_${item.type}_${item.id.slice(0, 8)}`,
-        source_type:     'memory',
-        memory_id:       item.id,
-        relevance:       finalScore,
-        content_snippet: item.content.slice(0, 120),
-      }
+      // Weighted blend — semantic dominates when available
+      const finalScore = hasEmbeddings && semanticScore > 0
+        ? (0.40 * semanticScore  +
+           0.20 * recencyScore   +
+           0.15 * scopeScore     +
+           0.10 * typeScore      +
+           0.10 * (1 - decayPenalty) +
+           0.05 * skillWeight)
+        : (0.45 * keywordScore   +
+           0.20 * recencyScore   +
+           0.15 * scopeScore     +
+           0.10 * typeScore      +
+           0.05 * (1 - decayPenalty) +
+           0.05 * skillWeight)
 
       return {
         id: item.id,
         source: 'l2_memory',
         content: item.content,
-        label: `[${item.type}:${item.scope}] ${(item.tags ?? []).join(', ') || 'memory'}`,
+        label: `[${item.type}:${item.scope}] ${item.tags?.join(', ') || 'memory'}`,
         token_count: item.token_count || estimateTokens(item.content),
-        citation,
         scores: {
-          relevance:     relevanceScore,
+          relevance:     hasEmbeddings ? semanticScore : keywordScore,
           recency:       recencyScore,
           scope_match:   scopeScore,
           type_priority: typeScore,
@@ -78,23 +115,24 @@ export class RetrievalService {
           final:         finalScore,
         },
         metadata: {
-          memory_id:   item.id,
-          type:        item.type,
-          scope:       item.scope,
-          tags:        item.tags,
-          confidence:  item.confidence,
-          created_at:  item.created_at,
-          project_id:  item.project_id,
+          memory_id:    item.id,
+          type:         item.type,
+          scope:        item.scope,
+          tags:         item.tags,
+          confidence:   item.confidence,
+          created_at:   item.created_at,
+          has_embedding: semanticScore > 0,
+          semantic_score: semanticScore,
+          keyword_score:  keywordScore,
         },
         dropped: false,
       }
     })
 
-    // Sort by score descending
+    // ── 5. Sort, top-k, touch accessed items ──────────────────
     scored.sort((a, b) => b.scores.final - a.scores.final)
-
-    // Touch accessed items (fire and forget)
     const topItems = scored.slice(0, limit)
+
     topItems.forEach((c) => {
       this.storage.touchMemoryItem(c.id).catch(() => {})
     })
@@ -102,7 +140,7 @@ export class RetrievalService {
     return topItems
   }
 
-  // ── Scoring Components ────────────────────────────────────
+  // ── Scoring helpers ───────────────────────────────────────────
 
   private computeTextRelevance(query: string, content: string): number {
     if (!content || !query) return 0
@@ -123,13 +161,12 @@ export class RetrievalService {
 
   private computeRecency(lastAccessed: string): number {
     const hoursAgo = (Date.now() - new Date(lastAccessed).getTime()) / (1000 * 60 * 60)
-    // Exponential decay: full at 0h, 0.5 at 24h, ~0.1 at 72h
     return Math.exp(-0.028 * hoursAgo)
   }
 
   private computeScopeMatch(itemScope: string, requestedScopes: string[]): number {
-    if (itemScope === 'global')                    return 1.0
-    if (requestedScopes.includes(itemScope))       return 0.9
+    if (itemScope === 'global') return 1.0
+    if (requestedScopes.includes(itemScope)) return 0.9
     return 0.3
   }
 
@@ -143,18 +180,17 @@ export class RetrievalService {
   }
 
   private computeSkillWeight(tags: string[], activeSkillIds: string[]): number {
-    if (!tags || tags.length === 0 || activeSkillIds.length === 0) return 0
+    if (!tags || tags.length === 0) return 0
     const overlap = tags.filter((t) => activeSkillIds.includes(t)).length
     return Math.min(1, overlap / Math.max(1, activeSkillIds.length))
   }
 }
 
 const STOP_WORDS = new Set([
-  'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had',
-  'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his',
-  'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy',
-  'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use', 'that', 'with',
-  'this', 'they', 'have', 'from', 'will', 'been', 'said', 'each', 'about',
-  'your', 'more', 'also', 'into', 'just', 'like', 'than', 'then', 'them',
-  'some', 'what', 'when', 'which', 'there', 'their', 'would', 'make', 'could',
+  'the','and','for','are','but','not','you','all','can','had','her','was',
+  'one','our','out','day','get','has','him','his','how','man','new','now',
+  'old','see','two','way','who','boy','did','its','let','put','say','she',
+  'too','use','that','with','this','they','have','from','will','been','said',
+  'each','about','your','more','also','into','just','like','than','then',
+  'them','some','what','when','which','there','their','would','make','could',
 ])

@@ -23,17 +23,21 @@ import type {
 } from '../types'
 import { StorageService } from '../services/storage'
 import { InsulaService } from '../services/insula'
+import { EmbeddingService } from '../services/embeddings'
 import { estimateTokens, computeDecay } from '../config'
 
 export class ConsolidationWorker {
-  private insula: InsulaService
+  private insula:     InsulaService
+  private embeddings: EmbeddingService
 
   constructor(
-    private storage: StorageService,
-    private apiKey: string,
+    private storage:  StorageService,
+    private apiKey:   string,
     private baseUrl?: string,
+    ai?: Ai | null,
   ) {
-    this.insula = new InsulaService()
+    this.insula     = new InsulaService()
+    this.embeddings = new EmbeddingService(ai ?? null)
   }
 
   async processJob(job: ConsolidationJob): Promise<void> {
@@ -102,6 +106,13 @@ export class ConsolidationWorker {
 
       if (summaryResult) {
         results.summary = summaryResult.memoryItem
+
+        // Embed summary for future semantic retrieval
+        const summaryEmbedding = await this.embeddings.embed(summaryResult.memoryItem.content)
+        if (summaryEmbedding) {
+          summaryResult.memoryItem.embedding = summaryEmbedding
+        }
+
         memoryDiff.key_facts_extracted = summaryResult.key_facts
 
         if (this.insula.shouldPersistToMemory(summaryResult.memoryItem.content, permissions, 'summary')) {
@@ -128,6 +139,9 @@ export class ConsolidationWorker {
 
         const finalItem = { ...item, content }
 
+        // Embed semantic item for future retrieval
+        const embedding = await this.embeddings.embed(content)
+        if (embedding) finalItem.embedding = embedding
         if (this.insula.shouldPersistToMemory(finalItem.content, permissions, 'semantic')) {
           await this.storage.insertMemoryItem(finalItem)
           results.semantic_candidates.push(finalItem)
