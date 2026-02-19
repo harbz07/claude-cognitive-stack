@@ -27,10 +27,13 @@ const chat = new Hono<{ Bindings: Env; Variables: { user_id: string } }>()
 chat.post('/', zValidator('json', chatSchema), async (c) => {
   const body = c.req.valid('json')
   const userId = c.get('user_id')
-  const apiKey = c.env.ANTHROPIC_API_KEY
+
+  // Prefer OpenAI-compatible key, fall back to Anthropic
+  const apiKey = c.env.OPENAI_API_KEY || c.env.ANTHROPIC_API_KEY
+  const baseUrl = c.env.OPENAI_API_KEY ? c.env.OPENAI_BASE_URL : undefined
 
   if (!apiKey) {
-    return c.json({ error: 'ANTHROPIC_API_KEY not configured.' }, 503)
+    return c.json({ error: 'No model API key configured (OPENAI_API_KEY or ANTHROPIC_API_KEY).' }, 503)
   }
 
   if (!c.env.DB) {
@@ -48,11 +51,12 @@ chat.post('/', zValidator('json', chatSchema), async (c) => {
         metadata: body.metadata ?? {},
       },
       apiKey,
+      baseUrl,
     )
 
     // Fire-and-forget consolidation if queued
     if (response.consolidation_queued) {
-      const worker = new ConsolidationWorker(storage, apiKey)
+      const worker = new ConsolidationWorker(storage, apiKey, baseUrl)
       worker.processPendingJobs().catch(() => {})
     }
 

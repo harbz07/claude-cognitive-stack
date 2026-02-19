@@ -19,6 +19,7 @@ export class ConsolidationWorker {
   constructor(
     private storage: StorageService,
     private apiKey: string,
+    private baseUrl?: string,
   ) {
     this.insula = new InsulaService()
   }
@@ -209,6 +210,29 @@ JSON:`,
 
   private async callClaude(prompt: string): Promise<string | null> {
     try {
+      // Use OpenAI-compatible endpoint if baseUrl is set
+      if (this.baseUrl) {
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-5-mini',
+            max_tokens: 1500,
+            messages: [
+              { role: 'system', content: 'You are a precise memory consolidation assistant. Be concise and structured.' },
+              { role: 'user', content: prompt },
+            ],
+          }),
+        })
+        if (!response.ok) return null
+        const data = await response.json() as any
+        return data.choices?.[0]?.message?.content ?? null
+      }
+
+      // Fallback: Anthropic
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {

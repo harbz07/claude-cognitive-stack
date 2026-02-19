@@ -117,11 +117,21 @@ reference it explicitly with "Based on our earlier discussion...".`,
   },
 ]
 
+// Anthropic model map
 export const MODEL_MAP: Record<string, string> = {
   default: 'claude-opus-4-5',
   fast: 'claude-haiku-4-5',
   deep: 'claude-opus-4-5',
   code: 'claude-sonnet-4-5',
+}
+
+// OpenAI-compatible model map (Genspark proxy)
+// Note: these are reasoning models — always use 1500+ max_tokens
+export const OPENAI_MODEL_MAP: Record<string, string> = {
+  default: 'gpt-5',
+  fast: 'gpt-5-mini',
+  deep: 'gpt-5',
+  code: 'gpt-5',
 }
 
 export const LOADOUT_MAP: Record<string, Loadout> = {

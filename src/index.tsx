@@ -14,7 +14,9 @@ import { StorageService } from './services/storage'
 
 export type Env = {
   DB: D1Database
-  ANTHROPIC_API_KEY: string
+  ANTHROPIC_API_KEY: string   // optional — Anthropic direct
+  OPENAI_API_KEY: string      // OpenAI-compatible (Genspark proxy)
+  OPENAI_BASE_URL: string     // e.g. https://www.genspark.ai/api/llm_proxy/v1
   MASTER_KEY: string
   ENVIRONMENT: string
 }
@@ -43,7 +45,8 @@ app.get('/api/health', (c) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     db: !!c.env.DB,
-    model_configured: !!c.env.ANTHROPIC_API_KEY,
+    model_configured: !!(c.env.OPENAI_API_KEY || c.env.ANTHROPIC_API_KEY),
+    backend: c.env.OPENAI_API_KEY ? 'openai-compatible' : c.env.ANTHROPIC_API_KEY ? 'anthropic' : 'none',
   })
 })
 

@@ -52,12 +52,15 @@ traces.get('/session/:id', async (c) => {
 // ── POST /api/traces/consolidate — Trigger manual consolidation
 traces.post('/consolidate', async (c) => {
   const userId = c.get('user_id')
-  if (!c.env.DB || !c.env.ANTHROPIC_API_KEY) {
+  const apiKey = c.env.OPENAI_API_KEY || c.env.ANTHROPIC_API_KEY
+  const baseUrl = c.env.OPENAI_API_KEY ? c.env.OPENAI_BASE_URL : undefined
+
+  if (!c.env.DB || !apiKey) {
     return c.json({ error: 'Service not configured' }, 503)
   }
 
   const storage = new StorageService(c.env.DB)
-  const worker = new ConsolidationWorker(storage, c.env.ANTHROPIC_API_KEY)
+  const worker = new ConsolidationWorker(storage, apiKey, baseUrl)
   const result = await worker.processPendingJobs()
 
   return c.json({ message: 'Consolidation triggered', ...result })

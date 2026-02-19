@@ -42,7 +42,7 @@ export class CognitiveOrchestrator {
     this.model = new ModelAdapter()
   }
 
-  async process(req: ChatRequest, apiKey: string): Promise<ChatResponse> {
+  async process(req: ChatRequest, apiKey: string, baseUrl?: string): Promise<ChatResponse> {
     const traceId = crypto.randomUUID()
     const requestAt = new Date().toISOString()
     const stages: TraceEvent[] = []
@@ -159,6 +159,7 @@ export class CognitiveOrchestrator {
         prompt: finalPrompt,
         model_profile: decision.model_profile,
         api_key: apiKey,
+        base_url: baseUrl,
         max_tokens: loadout.budgets.response_reserve,
       })
     } catch (err: any) {
