@@ -1,0 +1,13 @@
+# ── Cognitive Runtime Service — Local Dev Vars ───────────────
+# Copy to .dev.vars and fill in your values:
+#   cp .dev.vars.example .dev.vars
+
+# OpenAI-compatible endpoint (Genspark proxy)
+OPENAI_API_KEY=gsk-your-key-here
+OPENAI_BASE_URL=https://www.genspark.ai/api/llm_proxy/v1
+
+# Master API key for admin endpoints
+MASTER_KEY=dev-master-key
+
+# Optional: Anthropic direct backend
+# ANTHROPIC_API_KEY=sk-ant-your-key-here
