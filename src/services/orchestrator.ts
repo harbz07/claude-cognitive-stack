@@ -35,28 +35,40 @@ import { ThalamusService }  from './thalamus'
 import { InsulaService }    from './insula'
 import { ModelAdapter }     from './model-adapter'
 import { EmbeddingService } from './embeddings'
+import { SupabaseVectorStore } from './vector-store'
 import { ConsolidationWorker } from '../workers/consolidation'
 import { DEFAULT_LOADOUT, LOADOUT_MAP, estimateTokens } from '../config'
 
 export class CognitiveOrchestrator {
-  private wernicke:   WernickeRouter
-  private retrieval:  RetrievalService
-  private rag:        RagSearchService
-  private thalamus:   ThalamusService
-  private insula:     InsulaService
-  private model:      ModelAdapter
-  private storage:    StorageService
-  private embeddings: EmbeddingService
+  private wernicke:    WernickeRouter
+  private retrieval:   RetrievalService
+  private rag:         RagSearchService
+  private thalamus:    ThalamusService
+  private insula:      InsulaService
+  private model:       ModelAdapter
+  private storage:     StorageService
+  private embeddings:  EmbeddingService
+  private vectorStore: SupabaseVectorStore | null
 
-  constructor(storage: StorageService, ai?: Ai | null) {
-    this.storage    = storage
-    this.embeddings = new EmbeddingService(ai ?? null)
-    this.wernicke   = new WernickeRouter()
-    this.retrieval  = new RetrievalService(storage)
-    this.rag        = new RagSearchService(storage)
-    this.thalamus   = new ThalamusService()
-    this.insula     = new InsulaService()
-    this.model      = new ModelAdapter()
+  constructor(
+    storage: StorageService,
+    ai?: Ai | null,
+    openaiApiKey?: string | null,
+    openaiBaseUrl?: string | null,
+    supabaseUrl?: string | null,
+    supabaseKey?: string | null,
+  ) {
+    this.storage     = storage
+    this.embeddings  = new EmbeddingService(ai ?? null, openaiApiKey, openaiBaseUrl)
+    this.vectorStore = supabaseUrl && supabaseKey
+      ? new SupabaseVectorStore(supabaseUrl, supabaseKey)
+      : null
+    this.wernicke    = new WernickeRouter()
+    this.retrieval   = new RetrievalService(storage)
+    this.rag         = new RagSearchService(storage, this.vectorStore)
+    this.thalamus    = new ThalamusService()
+    this.insula      = new InsulaService()
+    this.model       = new ModelAdapter()
   }
 
   async process(
@@ -152,6 +164,7 @@ export class CognitiveOrchestrator {
       project_id:     req.project_id ?? session.project_id ?? undefined,
       decision,
       sliding_window: session.sliding_window,
+      queryEmbedding, // pass the pre-computed embedding → enables pgvector path
       top_k:          effectiveLoadout.rag_top_k,
       min_score:      effectiveLoadout.thresholds.thalamus_threshold,
     })
@@ -161,6 +174,7 @@ export class CognitiveOrchestrator {
       rag_candidates:    ragCandidates.length,
       citations_found:   ragCitations.length,
       semantic_enabled:  queryEmbedding !== null,
+      embedding_backend: this.embeddings.activeBackend,
       embedding_dims:    queryEmbedding?.length ?? 0,
       top_rag_scores:    ragCandidates.slice(0, 3).map((c) => ({
         label: c.label,
