@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Soul OS Tavern — Multi-agent AI chat interface with shared context"/>
   <title>Soul OS — Tavern</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -25,7 +26,6 @@
       --accent: #f0ff00; --success: #00ff88; --error: #ff3366;
       --glow-primary: 0 0 20px rgba(0,255,255,0.25); --glow-secondary: 0 0 20px rgba(255,0,255,0.2);
       --scrollbar-track: rgba(0,255,255,0.03); --scrollbar-thumb: rgba(0,255,255,0.15);
-      --font-mono: 'JetBrains Mono', monospace;
     }
     [data-theme="cyberpunk"] {
       --bg: #0a0408; --bg-surface: rgba(10,4,8,0.92); --bg-elevated: rgba(25,10,18,0.95);
@@ -36,7 +36,6 @@
       --accent: #ef4444; --success: #22c55e; --error: #ef4444;
       --glow-primary: 0 0 20px rgba(255,107,53,0.3); --glow-secondary: 0 0 20px rgba(192,38,211,0.2);
       --scrollbar-track: rgba(255,107,53,0.03); --scrollbar-thumb: rgba(255,107,53,0.15);
-      --font-mono: 'JetBrains Mono', monospace;
     }
     [data-theme="haunted"] {
       --bg: #000000; --bg-surface: rgba(0,5,0,0.95); --bg-elevated: rgba(0,10,0,0.95);
@@ -47,7 +46,6 @@
       --accent: #33ff33; --success: #00ff00; --error: #ff0000;
       --glow-primary: 0 0 15px rgba(0,255,0,0.2); --glow-secondary: 0 0 10px rgba(0,255,0,0.1);
       --scrollbar-track: rgba(0,255,0,0.02); --scrollbar-thumb: rgba(0,255,0,0.12);
-      --font-mono: 'JetBrains Mono', monospace;
     }
     [data-theme="soulOS"] {
       --bg: #0f172a; --bg-surface: rgba(255,255,255,0.04); --bg-elevated: rgba(255,255,255,0.06);
@@ -58,70 +56,80 @@
       --accent: #f59e0b; --success: #10b981; --error: #ef4444;
       --glow-primary: 0 0 20px rgba(99,102,241,0.25); --glow-secondary: 0 0 15px rgba(16,185,129,0.15);
       --scrollbar-track: rgba(255,255,255,0.02); --scrollbar-thumb: rgba(255,255,255,0.12);
-      --font-mono: 'JetBrains Mono', monospace;
     }
 
     body { background: var(--bg); color: var(--text); }
-
     .surface { background: var(--bg-surface); border: 1px solid var(--border); }
     .elevated { background: var(--bg-elevated); border: 1px solid var(--border); }
     .glow { box-shadow: var(--glow-primary); }
-    .glow-secondary { box-shadow: var(--glow-secondary); }
 
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
     ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb); opacity: 0.8; }
 
     /* ── Animations ──────────────────────────────────────── */
     @keyframes pulse-glow { 0%,100%{opacity:1} 50%{opacity:0.4} }
-    @keyframes slide-in-right { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
-    @keyframes slide-in-left { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes fade-in-up { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
     @keyframes typing-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
     @keyframes float-reaction { 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-30px) scale(1.3);opacity:0} }
     @keyframes scanline { 0%{top:-100%} 100%{top:100%} }
-    @keyframes crt-flicker { 0%,100%{opacity:1} 50%{opacity:0.97} }
-    @keyframes glitch-shift { 0%{transform:translate(0)} 20%{transform:translate(-2px,1px)} 40%{transform:translate(1px,-1px)} 60%{transform:translate(-1px,2px)} 80%{transform:translate(2px,-1px)} 100%{transform:translate(0)} }
     @keyframes neon-pulse { 0%,100%{text-shadow:0 0 5px var(--primary),0 0 10px var(--primary)} 50%{text-shadow:0 0 10px var(--primary),0 0 20px var(--primary),0 0 30px var(--primary)} }
+    @keyframes modal-in { from{transform:scale(0.95);opacity:0} to{transform:scale(1);opacity:1} }
 
-    .animate-fade-in-up { animation: fade-in-up 0.3s ease-out; }
-    .animate-slide-right { animation: slide-in-right 0.3s ease-out; }
-    .animate-pulse-glow { animation: pulse-glow 1.5s ease-in-out infinite; }
+    .anim-fade { animation: fade-in-up 0.3s ease-out; }
+    .anim-pulse { animation: pulse-glow 1.5s ease-in-out infinite; }
     .neon-text { animation: neon-pulse 2s ease-in-out infinite; }
     .reaction-float { animation: float-reaction 1.2s ease-out forwards; }
+    .anim-modal { animation: modal-in 0.2s ease-out; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
 
     [data-theme="cyberpunk"] body::after {
-      content:''; position:fixed; top:0; left:0; right:0; bottom:0;
+      content:''; position:fixed; inset:0;
       background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
       pointer-events:none; z-index:9999;
     }
-    [data-theme="haunted"] body { animation: crt-flicker 0.1s infinite; font-family: 'JetBrains Mono', monospace; }
+    [data-theme="haunted"] { font-family: 'JetBrains Mono', monospace; }
     [data-theme="haunted"] body::after {
       content:''; position:fixed; top:-100%; left:0; right:0; height:100%; z-index:9999; pointer-events:none;
       background: linear-gradient(transparent 50%, rgba(0,255,0,0.02) 50%);
       background-size: 100% 4px; animation: scanline 8s linear infinite;
     }
 
-    /* ── Utility ─────────────────────────────────────────── */
     .agent-msg { border-left: 3px solid var(--agent-color, var(--primary)); }
     .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: typing-bounce 1s ease-in-out infinite; }
     .typing-dot:nth-child(2) { animation-delay: 0.15s; }
     .typing-dot:nth-child(3) { animation-delay: 0.3s; }
-
     textarea:focus, input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 0; }
     input, textarea, select { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); }
     button { cursor: pointer; }
-
     .toast-enter { animation: fade-in-up 0.3s ease-out; }
+
+    .md-content code { background: var(--bg-elevated); padding: 1px 4px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+    .md-content pre { background: var(--bg-elevated); padding: 8px 12px; border-radius: 6px; overflow-x: auto; margin: 6px 0; border: 1px solid var(--border); }
+    .md-content pre code { background: transparent; padding: 0; }
+    .md-content strong { font-weight: 600; color: var(--text-heading); }
+    .md-content em { font-style: italic; opacity: 0.9; }
+    .md-content ul, .md-content ol { padding-left: 1.2em; margin: 4px 0; }
+    .md-content li { margin: 2px 0; }
+    .md-content p { margin: 4px 0; }
+    .md-content h1,.md-content h2,.md-content h3 { color: var(--text-heading); font-weight: 600; margin: 8px 0 4px; }
+
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+    .kbd { display:inline-block; padding:1px 5px; font-size:0.7rem; font-family:'JetBrains Mono',monospace; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; color:var(--text-muted); }
+
+    @media (max-width: 768px) {
+      .sidebar-mobile-hidden { display: none !important; }
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script>
 "use strict";
-var htm_module = htm; // htm is loaded as UMD global
-var html = htm_module.bind(React.createElement);
+var html = htm.bind(React.createElement);
 var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef,
     useCallback = React.useCallback, useMemo = React.useMemo, useReducer = React.useReducer,
     createContext = React.createContext, useContext = React.useContext, memo = React.memo;
@@ -131,16 +139,15 @@ var useState = React.useState, useEffect = React.useEffect, useRef = React.useRe
 // ════════════════════════════════════════════════════════════
 
 var THEMES = [
-  { id: 'neon', name: 'Neon Night', emoji: '💜' },
-  { id: 'cyberpunk', name: 'Cyberpunk', emoji: '🔥' },
-  { id: 'haunted', name: 'Haunted Terminal', emoji: '👻' },
-  { id: 'soulOS', name: 'Soul OS', emoji: '🧠' },
+  { id: 'neon', name: 'Neon Night', emoji: '\uD83D\uDC9C' },
+  { id: 'cyberpunk', name: 'Cyberpunk', emoji: '\uD83D\uDD25' },
+  { id: 'haunted', name: 'Haunted Terminal', emoji: '\uD83D\uDC7B' },
+  { id: 'soulOS', name: 'Soul OS', emoji: '\uD83E\uDDE0' },
 ];
 
 var AGENT_COLORS = {
   cortex: '#6366f1', philosopher: '#8b5cf6', comedian: '#f59e0b',
-  devil: '#ef4444', researcher: '#3b82f6', creative: '#ec4899',
-  strategist: '#10b981',
+  devil: '#ef4444', researcher: '#3b82f6', creative: '#ec4899', strategist: '#10b981',
 };
 
 var AVAILABLE_ROLES = [
@@ -149,38 +156,62 @@ var AVAILABLE_ROLES = [
 ];
 
 var DEFAULT_AGENTS = [
-  { id: 'cortex', name: 'Cortex', emoji: '🧠', role: 'Generalist',
-    personality: 'The primary cognitive agent. Precise, helpful, and context-aware. Synthesizes information and coordinates with other agents.',
-    color: AGENT_COLORS.cortex, enabled: true, isTyping: false, lastReaction: null },
-  { id: 'philosopher', name: 'Sophia', emoji: '🤔', role: 'Philosopher',
-    personality: 'Questions everything. Explores the deeper meaning behind topics. Loves analogies, Socratic questioning, and existential tangents.',
-    color: AGENT_COLORS.philosopher, enabled: false, isTyping: false, lastReaction: null },
-  { id: 'comedian', name: 'Jester', emoji: '😂', role: 'Comedian',
-    personality: 'Finds humor in everything. Makes witty observations, puns, and occasionally derails with hilarious tangents. Keeps morale high.',
-    color: AGENT_COLORS.comedian, enabled: false, isTyping: false, lastReaction: null },
-  { id: 'devil', name: 'Advocate', emoji: '😈', role: "Devil's Advocate",
-    personality: "Challenges assumptions ruthlessly. If everyone agrees, they disagree. Points out blind spots, risks, and uncomfortable truths.",
-    color: AGENT_COLORS.devil, enabled: false, isTyping: false, lastReaction: null },
-  { id: 'researcher', name: 'Atlas', emoji: '🔬', role: 'Researcher',
-    personality: 'Methodical and thorough. Cites sources, structures arguments, and provides deep technical analysis. Loves data and precision.',
-    color: AGENT_COLORS.researcher, enabled: false, isTyping: false, lastReaction: null },
-  { id: 'creative', name: 'Muse', emoji: '🎨', role: 'Creative',
-    personality: 'Wildly imaginative. Proposes unconventional solutions, creates vivid metaphors, and thinks in colors and shapes rather than logic.',
-    color: AGENT_COLORS.creative, enabled: false, isTyping: false, lastReaction: null },
-  { id: 'strategist', name: 'Bishop', emoji: '♟️', role: 'Strategist',
-    personality: 'Thinks five moves ahead. Focuses on outcomes, trade-offs, and optimal paths. Loves game theory and systems thinking.',
-    color: AGENT_COLORS.strategist, enabled: false, isTyping: false, lastReaction: null },
+  { id:'cortex', name:'Cortex', emoji:'\uD83E\uDDE0', role:'Generalist',
+    personality:'The primary cognitive agent. Precise, helpful, and context-aware. Synthesizes information and coordinates with other agents.',
+    color:AGENT_COLORS.cortex, enabled:true, isTyping:false, lastReaction:null },
+  { id:'philosopher', name:'Sophia', emoji:'\uD83E\uDD14', role:'Philosopher',
+    personality:'Questions everything. Explores deeper meaning. Loves analogies, Socratic questioning, and existential tangents.',
+    color:AGENT_COLORS.philosopher, enabled:false, isTyping:false, lastReaction:null },
+  { id:'comedian', name:'Jester', emoji:'\uD83D\uDE02', role:'Comedian',
+    personality:'Finds humor in everything. Witty observations, puns, and hilarious tangents. Keeps morale high.',
+    color:AGENT_COLORS.comedian, enabled:false, isTyping:false, lastReaction:null },
+  { id:'devil', name:'Advocate', emoji:'\uD83D\uDE08', role:"Devil's Advocate",
+    personality:"Challenges assumptions ruthlessly. Points out blind spots, risks, and uncomfortable truths.",
+    color:AGENT_COLORS.devil, enabled:false, isTyping:false, lastReaction:null },
+  { id:'researcher', name:'Atlas', emoji:'\uD83D\uDD2C', role:'Researcher',
+    personality:'Methodical and thorough. Cites sources, structures arguments, deep technical analysis.',
+    color:AGENT_COLORS.researcher, enabled:false, isTyping:false, lastReaction:null },
+  { id:'creative', name:'Muse', emoji:'\uD83C\uDFA8', role:'Creative',
+    personality:'Wildly imaginative. Unconventional solutions, vivid metaphors, thinks in colors and shapes.',
+    color:AGENT_COLORS.creative, enabled:false, isTyping:false, lastReaction:null },
+  { id:'strategist', name:'Bishop', emoji:'\u265F\uFE0F', role:'Strategist',
+    personality:'Thinks five moves ahead. Focuses on outcomes, trade-offs, optimal paths. Game theory and systems thinking.',
+    color:AGENT_COLORS.strategist, enabled:false, isTyping:false, lastReaction:null },
 ];
 
-var REACTION_POOL = ['🤔','💡','👀','😏','🔥','⚡','💬','👏','😮','🧐','✨','💀'];
+var AGENT_PRESETS = [
+  { id: 'solo', name: 'Solo (Cortex only)', desc: 'Just the primary agent', agents: ['cortex'] },
+  { id: 'debate', name: 'Debate Club', desc: 'Philosopher + Devil\'s Advocate + Strategist', agents: ['cortex','philosopher','devil','strategist'] },
+  { id: 'creative_session', name: 'Creative Session', desc: 'Muse + Comedian + Cortex', agents: ['cortex','comedian','creative'] },
+  { id: 'research_team', name: 'Research Team', desc: 'Atlas + Bishop + Cortex', agents: ['cortex','researcher','strategist'] },
+  { id: 'full_tavern', name: 'Full Tavern', desc: 'All 7 agents enabled', agents: ['cortex','philosopher','comedian','devil','researcher','creative','strategist'] },
+];
+
+var REACTION_POOL = ['\uD83E\uDD14','\uD83D\uDCA1','\uD83D\uDC40','\uD83D\uDE0F','\uD83D\uDD25','\u26A1','\uD83D\uDCAC','\uD83D\uDC4F','\uD83D\uDE2E','\uD83E\uDDD0','\u2728','\uD83D\uDC80'];
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-function escapeHtml(t) { var d = document.createElement('div'); d.appendChild(document.createTextNode(t||'')); return d.innerHTML; }
+function escapeHtml(t) { var d=document.createElement('div'); d.appendChild(document.createTextNode(t||'')); return d.innerHTML; }
 function randomReaction() { return REACTION_POOL[Math.floor(Math.random()*REACTION_POOL.length)]; }
-function clamp(v,lo,hi) { return Math.max(lo,Math.min(hi,v)); }
+
+function renderMarkdown(text) {
+  var s = escapeHtml(text);
+  s = s.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  s = s.replace(/^- (.+)$/gm, '<li>$1</li>');
+  s = s.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+  s = s.replace(/<\/ul>\s*<ul>/g, '');
+  s = s.replace(/\n/g, '<br>');
+  s = s.replace(/<br><br>/g, '</p><p>');
+  return '<p>' + s + '</p>';
+}
 
 // ════════════════════════════════════════════════════════════
-// STATE MANAGEMENT
+// STATE
 // ════════════════════════════════════════════════════════════
 
 var initialState = {
@@ -195,10 +226,12 @@ var initialState = {
   responseMode: localStorage.getItem('st_response_mode') || 'roundRobin',
   selectedAgentId: 'cortex',
   health: { status: 'checking', ready: false },
-  sidebarOpen: true,
-  contextPanelOpen: true,
+  sidebarOpen: window.innerWidth > 768,
+  contextPanelOpen: window.innerWidth > 1024,
   loadout: localStorage.getItem('st_loadout') || 'default',
   tokenUsage: null,
+  showHelp: false,
+  showExport: false,
 };
 
 function appReducer(state, action) {
@@ -249,6 +282,18 @@ function appReducer(state, action) {
     case 'NEW_SESSION':
       localStorage.removeItem('st_session_id');
       return Object.assign({}, state, { sessionId: null, messages: [], contextSummary: '', contextMemories: [], tokenUsage: null });
+    case 'SHOW_HELP':
+      return Object.assign({}, state, { showHelp: action.payload });
+    case 'SHOW_EXPORT':
+      return Object.assign({}, state, { showExport: action.payload });
+    case 'APPLY_PRESET':
+      var preset = AGENT_PRESETS.find(function(p) { return p.id === action.payload; });
+      if (!preset) return state;
+      var presetAgents = state.agents.map(function(a) {
+        return Object.assign({}, a, { enabled: preset.agents.indexOf(a.id) >= 0 });
+      });
+      localStorage.setItem('st_agents', JSON.stringify(presetAgents));
+      return Object.assign({}, state, { agents: presetAgents });
     default:
       return state;
   }
@@ -263,13 +308,11 @@ var AppContext = createContext(null);
 function apiHeaders(apiKey) {
   return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
 }
-
 async function apiGet(path, apiKey) {
   var r = await fetch(path, { headers: apiHeaders(apiKey) });
   if (!r.ok) { var e = await r.json().catch(function(){return {error:r.statusText}}); throw new Error(e.error || r.statusText); }
   return r.json();
 }
-
 async function apiPost(path, body, apiKey) {
   var r = await fetch(path, { method: 'POST', headers: apiHeaders(apiKey), body: JSON.stringify(body) });
   if (!r.ok) { var e = await r.json().catch(function(){return {error:r.statusText}}); throw new Error(e.error || r.statusText); }
@@ -277,18 +320,138 @@ async function apiPost(path, body, apiKey) {
 }
 
 // ════════════════════════════════════════════════════════════
-// COMPONENTS
+// TOAST
 // ════════════════════════════════════════════════════════════
 
-// ── Toast ───────────────────────────────────────────────────
-var toastQueue = [];
 function showToast(msg, isError) {
   var el = document.createElement('div');
+  el.setAttribute('role', 'alert');
   el.className = 'fixed bottom-4 right-4 z-[9999] px-4 py-2 rounded-lg text-sm shadow-xl toast-enter';
   el.style.cssText = 'background:' + (isError ? 'var(--error)' : 'var(--primary)') + ';color:#fff;';
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(function() { el.remove(); }, 3000);
+}
+
+// ════════════════════════════════════════════════════════════
+// COMPONENTS
+// ════════════════════════════════════════════════════════════
+
+// ── Help Modal ──────────────────────────────────────────────
+function HelpModal() {
+  var ctx = useContext(AppContext);
+  var dispatch = ctx.dispatch;
+  if (!ctx.state.showHelp) return null;
+
+  var shortcuts = [
+    ['Ctrl + /', 'Show this help'],
+    ['Ctrl + B', 'Toggle agent sidebar'],
+    ['Ctrl + I', 'Toggle context panel'],
+    ['Ctrl + N', 'New session'],
+    ['Ctrl + E', 'Export conversation'],
+    ['Ctrl + 1-7', 'Select agent 1-7'],
+    ['Enter', 'Send message'],
+    ['Shift + Enter', 'New line in message'],
+    ['Escape', 'Close modals'],
+  ];
+
+  return html`
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style=${{ background: 'rgba(0,0,0,0.6)' }}
+      onClick=${function() { dispatch({ type: 'SHOW_HELP', payload: false }); }}
+      role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+      <div className="surface rounded-xl p-6 w-full max-w-lg mx-4 anim-modal" onClick=${function(e) { e.stopPropagation(); }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold" style=${{ color: 'var(--text-heading)' }}>
+            <i className="fas fa-keyboard mr-2" style=${{ color: 'var(--primary)' }}></i>Keyboard Shortcuts
+          </h2>
+          <button onClick=${function() { dispatch({ type: 'SHOW_HELP', payload: false }); }}
+            className="p-1 rounded" style=${{ color: 'var(--text-muted)' }} aria-label="Close help">
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="space-y-2">
+          ${shortcuts.map(function(s) {
+            return html`<div key=${s[0]} className="flex items-center justify-between py-1.5" style=${{ borderBottom: '1px solid var(--border)' }}>
+              <span className="text-sm" style=${{ color: 'var(--text)' }}>${s[1]}</span>
+              <span className="kbd">${s[0]}</span>
+            </div>`;
+          })}
+        </div>
+        <div className="mt-5 p-3 rounded text-xs leading-relaxed" style=${{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+          <strong style=${{ color: 'var(--text-heading)' }}>Response Modes:</strong><br/>
+          <strong>Single</strong> — Only the selected agent responds.<br/>
+          <strong>Round Robin</strong> — Each enabled agent responds in order.<br/>
+          <strong>All at Once</strong> — All enabled agents respond in parallel.
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Export Modal ─────────────────────────────────────────────
+function ExportModal() {
+  var ctx = useContext(AppContext);
+  var state = ctx.state, dispatch = ctx.dispatch;
+  if (!state.showExport) return null;
+
+  function exportText() {
+    var lines = state.messages.map(function(m) {
+      var agent = state.agents.find(function(a) { return a.id === m.agentId; });
+      var name = agent ? agent.name + ' (' + agent.role + ')' : (m.agentId === 'user' ? 'You' : 'System');
+      return '[' + m.timestamp + '] ' + name + ':\n' + m.content + '\n';
+    });
+    var text = '=== Soul OS Tavern — Conversation Export ===\n'
+      + 'Session: ' + (state.sessionId || 'N/A') + '\n'
+      + 'Date: ' + new Date().toLocaleString() + '\n'
+      + 'Agents: ' + state.agents.filter(function(a){return a.enabled;}).map(function(a){return a.name;}).join(', ') + '\n'
+      + '============================================\n\n'
+      + lines.join('\n');
+    download(text, 'tavern-export-' + Date.now() + '.txt', 'text/plain');
+    dispatch({ type: 'SHOW_EXPORT', payload: false });
+    showToast('Exported as text');
+  }
+
+  function exportJSON() {
+    var data = {
+      session_id: state.sessionId,
+      exported_at: new Date().toISOString(),
+      agents: state.agents.filter(function(a){return a.enabled;}).map(function(a){return {id:a.id,name:a.name,role:a.role};}),
+      messages: state.messages,
+      context_summary: state.contextSummary,
+    };
+    download(JSON.stringify(data, null, 2), 'tavern-export-' + Date.now() + '.json', 'application/json');
+    dispatch({ type: 'SHOW_EXPORT', payload: false });
+    showToast('Exported as JSON');
+  }
+
+  function download(content, filename, type) {
+    var blob = new Blob([content], { type: type });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return html`
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style=${{ background: 'rgba(0,0,0,0.6)' }}
+      onClick=${function() { dispatch({ type: 'SHOW_EXPORT', payload: false }); }}
+      role="dialog" aria-modal="true" aria-label="Export conversation">
+      <div className="surface rounded-xl p-6 w-full max-w-sm mx-4 anim-modal" onClick=${function(e) { e.stopPropagation(); }}>
+        <h2 className="text-lg font-bold mb-4" style=${{ color: 'var(--text-heading)' }}>
+          <i className="fas fa-download mr-2" style=${{ color: 'var(--primary)' }}></i>Export Conversation
+        </h2>
+        <p className="text-sm mb-4" style=${{ color: 'var(--text-muted)' }}>${state.messages.length} messages in this session.</p>
+        <div className="space-y-2">
+          <button onClick=${exportText} className="w-full py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+            style=${{ background: 'var(--primary)', color: '#fff' }}>
+            <i className="fas fa-file-alt"></i> Export as Text
+          </button>
+          <button onClick=${exportJSON} className="w-full py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+            style=${{ background: 'var(--primary-dim)', border: '1px solid var(--primary)', color: 'var(--primary)' }}>
+            <i className="fas fa-code"></i> Export as JSON
+          </button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ── TopBar ──────────────────────────────────────────────────
@@ -306,53 +469,63 @@ function TopBar() {
   var healthLabel = state.health.status === 'ok' ? (state.health.ready ? 'Ready' : 'No Model Key') : 'Offline';
 
   return html`
-    <nav className="flex items-center justify-between px-4 py-2 surface" style=${{ borderBottom: '1px solid var(--border)' }}>
-      <div className="flex items-center gap-3">
+    <nav className="flex items-center justify-between px-3 py-2 surface" style=${{ borderBottom: '1px solid var(--border)' }}
+      role="banner">
+      <div className="flex items-center gap-2">
         <button onClick=${function() { dispatch({ type: 'TOGGLE_SIDEBAR' }); }}
-          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--primary)' }}>
+          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--primary)' }}
+          aria-label="Toggle agent sidebar" title="Toggle sidebar (Ctrl+B)">
           <i className="fas fa-bars text-sm"></i>
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🏰</span>
-          <div>
-            <span className="font-bold text-sm" style=${{ color: 'var(--text-heading)' }}>Soul OS</span>
-            <span className="text-xs ml-1.5 neon-text" style=${{ color: 'var(--primary)' }}>Tavern</span>
-          </div>
+        <span className="text-lg" aria-hidden="true">\uD83C\uDFF0</span>
+        <div className="hidden sm:block">
+          <span className="font-bold text-sm" style=${{ color: 'var(--text-heading)' }}>Soul OS</span>
+          <span className="text-xs ml-1 neon-text" style=${{ color: 'var(--primary)' }}>Tavern</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <!-- Theme selector -->
-        <div className="flex gap-1">
+      <div className="flex items-center gap-2">
+        <div className="hidden md:flex gap-1" role="radiogroup" aria-label="Theme selector">
           ${THEMES.map(function(t) {
             return html`<button key=${t.id} onClick=${function() { dispatch({ type: 'SET_THEME', payload: t.id }); }}
-              className=${"px-2 py-1 rounded text-xs transition " + (state.theme === t.id ? 'glow' : '')}
+              className=${"px-1.5 py-1 rounded text-xs transition " + (state.theme === t.id ? 'glow' : '')}
               style=${{ background: state.theme === t.id ? 'var(--primary-dim)' : 'transparent',
-                        border: '1px solid ' + (state.theme === t.id ? 'var(--primary)' : 'var(--border)'),
-                        color: 'var(--text)' }}
+                        border: '1px solid ' + (state.theme === t.id ? 'var(--primary)' : 'var(--border)') }}
+              role="radio" aria-checked=${state.theme === t.id} aria-label=${t.name}
               title=${t.name}>${t.emoji}</button>`;
           })}
         </div>
 
-        <!-- Health -->
-        <div className="flex items-center gap-1.5">
-          <div className=${"w-2 h-2 rounded-full " + (state.health.status === 'ok' ? '' : 'animate-pulse-glow')}
+        <div className="flex items-center gap-1.5" aria-label=${"System status: " + healthLabel}>
+          <div className=${"w-2 h-2 rounded-full " + (state.health.status !== 'ok' ? 'anim-pulse' : '')}
             style=${{ background: healthColor }}></div>
-          <span className="text-xs" style=${{ color: healthColor }}>${healthLabel}</span>
+          <span className="text-xs hidden sm:inline" style=${{ color: healthColor }}>${healthLabel}</span>
         </div>
 
-        <!-- API Key -->
         <div className="flex gap-1">
-          <input ref=${keyRef} type="password" placeholder="API Key (crs_...)" defaultValue=${state.apiKey}
-            className="text-xs px-2 py-1 rounded w-32"
+          <input ref=${keyRef} type="password" placeholder="API Key" defaultValue=${state.apiKey}
+            className="text-xs px-2 py-1 rounded w-24 sm:w-32" aria-label="API key"
             onKeyDown=${function(e) { if (e.key === 'Enter') saveKey(); }} />
-          <button onClick=${saveKey} className="text-xs px-2 py-1 rounded font-medium transition"
-            style=${{ background: 'var(--primary)', color: '#fff' }}>Save</button>
+          <button onClick=${saveKey} className="text-xs px-2 py-1 rounded font-medium"
+            style=${{ background: 'var(--primary)', color: '#fff' }} aria-label="Save API key">Save</button>
         </div>
+
+        <button onClick=${function() { dispatch({ type: 'SHOW_EXPORT', payload: true }); }}
+          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--text-muted)' }}
+          aria-label="Export conversation" title="Export (Ctrl+E)">
+          <i className="fas fa-download text-sm"></i>
+        </button>
 
         <button onClick=${function() { dispatch({ type: 'TOGGLE_CONTEXT' }); }}
-          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--primary)' }}>
+          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--primary)' }}
+          aria-label="Toggle context panel" title="Context panel (Ctrl+I)">
           <i className="fas fa-brain text-sm"></i>
+        </button>
+
+        <button onClick=${function() { dispatch({ type: 'SHOW_HELP', payload: true }); }}
+          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--text-muted)' }}
+          aria-label="Keyboard shortcuts" title="Help (Ctrl+/)">
+          <i className="fas fa-question-circle text-sm"></i>
         </button>
       </div>
     </nav>`;
@@ -360,17 +533,16 @@ function TopBar() {
 
 // ── Agent Card (Sidebar) ────────────────────────────────────
 function AgentCard(props) {
-  var agent = props.agent, dispatch = props.dispatch, isSelected = props.isSelected;
-  var editOpen = useState(false), isEditing = editOpen[0], setEditing = editOpen[1];
+  var agent = props.agent, dispatch = props.dispatch, isSelected = props.isSelected, idx = props.idx;
+  var editState = useState(false), isEditing = editState[0], setEditing = editState[1];
   var nameRef = useRef(null);
   var personalityRef = useRef(null);
 
-  function toggle() {
+  function toggle(e) {
+    e.stopPropagation();
     dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { enabled: !agent.enabled } } });
   }
-  function select() {
-    dispatch({ type: 'SET_SELECTED_AGENT', payload: agent.id });
-  }
+  function select() { dispatch({ type: 'SET_SELECTED_AGENT', payload: agent.id }); }
   function saveEdit() {
     var changes = {};
     if (nameRef.current) changes.name = nameRef.current.value;
@@ -380,50 +552,56 @@ function AgentCard(props) {
   }
 
   return html`
-    <div className=${"rounded-lg p-2.5 mb-1.5 transition cursor-pointer animate-fade-in-up " + (isSelected ? 'glow' : '')}
+    <div className=${"rounded-lg p-2.5 mb-1.5 transition cursor-pointer " + (isSelected ? 'glow' : '')}
       style=${{ background: isSelected ? agent.color + '15' : 'var(--bg-surface)',
                 border: '1px solid ' + (isSelected ? agent.color + '40' : 'var(--border)'),
-                opacity: agent.enabled ? 1 : 0.45 }}
-      onClick=${select}>
-      <div className="flex items-center justify-between mb-1">
+                opacity: agent.enabled ? 1 : 0.4 }}
+      onClick=${select} role="option" aria-selected=${isSelected} aria-label=${agent.name + ' - ' + agent.role}
+      tabIndex="0" onKeyDown=${function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();select();}}}>
+      <div className="flex items-center justify-between mb-0.5">
         <div className="flex items-center gap-2">
-          <span className="text-lg relative">
+          <span className="text-lg relative" aria-hidden="true">
             ${agent.emoji}
-            ${agent.isTyping ? html`<span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full animate-pulse-glow" style=${{ background: agent.color }}></span>` : null}
+            ${agent.isTyping ? html`<span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full anim-pulse" style=${{ background: agent.color }}></span>` : null}
             ${agent.lastReaction ? html`<span className="absolute -top-3 -right-2 text-sm reaction-float">${agent.lastReaction}</span>` : null}
           </span>
           <div>
-            <div className="text-xs font-semibold" style=${{ color: agent.color }}>${agent.name}</div>
+            <div className="text-xs font-semibold flex items-center gap-1" style=${{ color: agent.color }}>
+              ${agent.name}
+              <span className="kbd text-xs" style=${{ fontSize: '0.6rem' }}>${idx + 1}</span>
+            </div>
             <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${agent.role}</div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button onClick=${function(e) { e.stopPropagation(); setEditing(!isEditing); }}
             className="p-1 rounded text-xs transition hover:opacity-80"
-            style=${{ color: 'var(--text-muted)' }}>
+            style=${{ color: 'var(--text-muted)' }} aria-label=${"Edit " + agent.name}>
             <i className=${"fas fa-" + (isEditing ? "check" : "cog")}></i>
           </button>
-          <button onClick=${function(e) { e.stopPropagation(); toggle(); }}
+          <button onClick=${toggle}
             className="p-1 rounded text-xs transition"
-            style=${{ color: agent.enabled ? 'var(--success)' : 'var(--text-muted)' }}>
+            style=${{ color: agent.enabled ? 'var(--success)' : 'var(--text-muted)' }}
+            aria-label=${(agent.enabled ? 'Disable' : 'Enable') + ' ' + agent.name}>
             <i className=${"fas fa-" + (agent.enabled ? "toggle-on" : "toggle-off")}></i>
           </button>
         </div>
       </div>
       ${isEditing ? html`
-        <div className="mt-2 space-y-1.5 animate-fade-in-up" onClick=${function(e) { e.stopPropagation(); }}>
+        <div className="mt-2 space-y-1.5 anim-fade" onClick=${function(e) { e.stopPropagation(); }}>
           <input ref=${nameRef} defaultValue=${agent.name} placeholder="Name"
-            className="w-full text-xs px-2 py-1 rounded" />
-          <select className="w-full text-xs px-2 py-1 rounded"
+            className="w-full text-xs px-2 py-1 rounded" aria-label="Agent name" />
+          <select className="w-full text-xs px-2 py-1 rounded" aria-label="Agent role"
             value=${agent.role} onChange=${function(e) {
               dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { role: e.target.value } } });
             }}>
             ${AVAILABLE_ROLES.map(function(r) { return html`<option key=${r} value=${r}>${r}</option>`; })}
           </select>
           <textarea ref=${personalityRef} defaultValue=${agent.personality} rows="2"
-            className="w-full text-xs px-2 py-1 rounded resize-none" placeholder="Personality..." />
+            className="w-full text-xs px-2 py-1 rounded resize-none" placeholder="Personality..."
+            aria-label="Agent personality" />
           <button onClick=${saveEdit} className="w-full text-xs py-1 rounded font-medium transition"
-            style=${{ background: agent.color, color: '#fff' }}>Save Changes</button>
+            style=${{ background: agent.color, color: '#fff' }}>Save</button>
         </div>
       ` : null}
     </div>`;
@@ -434,47 +612,73 @@ function AgentSidebar() {
   var ctx = useContext(AppContext);
   var state = ctx.state, dispatch = ctx.dispatch;
   var enabledCount = state.agents.filter(function(a) { return a.enabled; }).length;
+  var presetOpen = useState(false), showPresets = presetOpen[0], setShowPresets = presetOpen[1];
 
   if (!state.sidebarOpen) return null;
 
   return html`
-    <aside className="flex flex-col w-56 flex-shrink-0 surface overflow-hidden animate-slide-right"
-      style=${{ borderRight: '1px solid var(--border)' }}>
-      <div className="p-3 flex items-center justify-between" style=${{ borderBottom: '1px solid var(--border)' }}>
+    <aside className="flex flex-col w-56 flex-shrink-0 surface overflow-hidden"
+      style=${{ borderRight: '1px solid var(--border)' }} role="complementary" aria-label="Agent management">
+      <div className="p-2.5 flex items-center justify-between" style=${{ borderBottom: '1px solid var(--border)' }}>
         <div>
           <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Agents</div>
           <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${enabledCount}/7 active</div>
         </div>
         <select className="text-xs px-2 py-1 rounded" value=${state.responseMode}
-          onChange=${function(e) { dispatch({ type: 'SET_RESPONSE_MODE', payload: e.target.value }); }}>
+          onChange=${function(e) { dispatch({ type: 'SET_RESPONSE_MODE', payload: e.target.value }); }}
+          aria-label="Response mode">
           <option value="single">Single</option>
           <option value="roundRobin">Round Robin</option>
           <option value="allAtOnce">All at Once</option>
         </select>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        ${state.agents.map(function(agent) {
+      <!-- Presets -->
+      <div className="px-2.5 pt-2">
+        <button onClick=${function() { setShowPresets(!showPresets); }}
+          className="w-full text-xs py-1 rounded transition flex items-center justify-center gap-1"
+          style=${{ background: 'var(--secondary-dim)', border: '1px solid var(--secondary)', color: 'var(--secondary)' }}>
+          <i className=${"fas fa-" + (showPresets ? "chevron-up" : "magic")}></i>
+          ${showPresets ? 'Hide' : 'Presets'}
+        </button>
+        ${showPresets ? html`
+          <div className="mt-1.5 space-y-1 anim-fade">
+            ${AGENT_PRESETS.map(function(p) {
+              return html`<button key=${p.id} onClick=${function() { dispatch({ type: 'APPLY_PRESET', payload: p.id }); showToast('Preset: ' + p.name); setShowPresets(false); }}
+                className="w-full text-left text-xs px-2 py-1.5 rounded transition"
+                style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                <div className="font-medium" style=${{ color: 'var(--text-heading)' }}>${p.name}</div>
+                <div style=${{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>${p.desc}</div>
+              </button>`;
+            })}
+          </div>
+        ` : null}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-0.5" role="listbox" aria-label="Agent list">
+        ${state.agents.map(function(agent, idx) {
           return html`<${AgentCard} key=${agent.id} agent=${agent} dispatch=${dispatch}
-            isSelected=${state.selectedAgentId === agent.id} />`;
+            isSelected=${state.selectedAgentId === agent.id} idx=${idx} />`;
         })}
       </div>
 
-      <div className="p-3" style=${{ borderTop: '1px solid var(--border)' }}>
+      <div className="p-2.5" style=${{ borderTop: '1px solid var(--border)' }}>
         <div className="text-xs mb-1" style=${{ color: 'var(--text-muted)' }}>Loadout</div>
         <select className="w-full text-xs px-2 py-1 rounded mb-2" value=${state.loadout}
-          onChange=${function(e) { dispatch({ type: 'SET_LOADOUT', payload: e.target.value }); }}>
+          onChange=${function(e) { dispatch({ type: 'SET_LOADOUT', payload: e.target.value }); }}
+          aria-label="Loadout profile">
           <option value="default">Default</option>
           <option value="fast">Fast (Mini)</option>
           <option value="deep">Deep (Opus)</option>
         </select>
         <div className="text-xs mb-1" style=${{ color: 'var(--text-muted)' }}>Session</div>
         <div className="text-xs font-mono break-all mb-1.5" style=${{ color: 'var(--text-muted)' }}>
-          ${state.sessionId ? state.sessionId.slice(0, 20) + '...' : 'Auto (new)'}
+          ${state.sessionId ? state.sessionId.slice(0, 18) + '...' : 'Auto (new)'}
         </div>
         <button onClick=${function() { dispatch({ type: 'NEW_SESSION' }); showToast('New session'); }}
           className="w-full text-xs py-1.5 rounded font-medium transition"
-          style=${{ background: 'var(--primary-dim)', border: '1px solid var(--primary)', color: 'var(--primary)' }}>
+          style=${{ background: 'var(--primary-dim)', border: '1px solid var(--primary)', color: 'var(--primary)' }}
+          aria-label="Start new session">
           <i className="fas fa-plus mr-1"></i>New Session
         </button>
       </div>
@@ -489,15 +693,15 @@ var MessageBubble = memo(function(props) {
   var agent = !isUser && !isSystem ? agents.find(function(a) { return a.id === msg.agentId; }) : null;
   var agentColor = agent ? agent.color : (isUser ? 'var(--primary)' : 'var(--text-muted)');
   var agentName = agent ? agent.name : (isUser ? 'You' : 'System');
-  var agentEmoji = agent ? agent.emoji : (isUser ? '👤' : '⚙️');
-
-  var contentHtml = escapeHtml(msg.content).replace(/\n/g, '<br>');
+  var agentEmoji = agent ? agent.emoji : (isUser ? '\uD83D\uDC64' : '\u2699\uFE0F');
+  var contentHtml = renderMarkdown(msg.content);
 
   return html`
-    <div className="agent-msg rounded-lg p-3 animate-fade-in-up" style=${{ '--agent-color': agentColor, background: agentColor + '08' }}>
+    <div className="agent-msg rounded-lg p-3 anim-fade" style=${{ '--agent-color': agentColor, background: agentColor + '08' }}
+      role="article" aria-label=${"Message from " + agentName}>
       <div className="flex items-start gap-2.5">
         <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base"
-          style=${{ background: agentColor + '20', border: '1px solid ' + agentColor + '30' }}>
+          style=${{ background: agentColor + '20', border: '1px solid ' + agentColor + '30' }} aria-hidden="true">
           ${agentEmoji}
         </div>
         <div className="flex-1 min-w-0">
@@ -506,15 +710,15 @@ var MessageBubble = memo(function(props) {
             ${agent ? html`<span className="text-xs px-1.5 py-0.5 rounded" style=${{ background: agentColor + '15', color: agentColor + 'cc' }}>${agent.role}</span>` : null}
             <span className="text-xs ml-auto" style=${{ color: 'var(--text-muted)' }}>${msg.timestamp}</span>
           </div>
-          <div className="text-sm leading-relaxed" style=${{ color: 'var(--text)' }}
+          <div className="text-sm leading-relaxed md-content" style=${{ color: 'var(--text)' }}
             dangerouslySetInnerHTML=${{ __html: contentHtml }}></div>
           ${msg.meta ? html`
             <div className="flex flex-wrap items-center gap-2 mt-2 pt-2" style=${{ borderTop: '1px solid var(--border)' }}>
               ${(msg.meta.skills || []).map(function(s) {
                 return html`<span key=${s} className="text-xs px-1.5 py-0.5 rounded" style=${{ background: 'var(--primary-dim)', color: 'var(--primary)' }}>${s}</span>`;
               })}
-              ${msg.meta.memory ? html`<span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-brain mr-1"></i>${msg.meta.memory} memories</span>` : null}
-              ${msg.meta.tokens ? html`<span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-coins mr-1"></i>${msg.meta.tokens.total} tokens</span>` : null}
+              ${msg.meta.memory ? html`<span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-brain mr-1" aria-hidden="true"></i>${msg.meta.memory} memories</span>` : null}
+              ${msg.meta.tokens ? html`<span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-coins mr-1" aria-hidden="true"></i>${msg.meta.tokens.total} tok</span>` : null}
               ${msg.meta.traceId ? html`<span className="text-xs font-mono" style=${{ color: 'var(--text-muted)' }}>${msg.meta.traceId.slice(0,8)}</span>` : null}
             </div>
           ` : null}
@@ -527,16 +731,17 @@ var MessageBubble = memo(function(props) {
 function TypingIndicator(props) {
   var agent = props.agent;
   return html`
-    <div className="agent-msg rounded-lg p-3 animate-fade-in-up" style=${{ '--agent-color': agent.color, background: agent.color + '08' }}>
+    <div className="agent-msg rounded-lg p-3 anim-fade" style=${{ '--agent-color': agent.color, background: agent.color + '08' }}
+      role="status" aria-label=${agent.name + " is typing"}>
       <div className="flex items-center gap-2.5">
         <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base"
-          style=${{ background: agent.color + '20', border: '1px solid ' + agent.color + '30' }}>
+          style=${{ background: agent.color + '20', border: '1px solid ' + agent.color + '30' }} aria-hidden="true">
           ${agent.emoji}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold" style=${{ color: agent.color }}>${agent.name}</span>
           <span className="text-xs" style=${{ color: 'var(--text-muted)' }}>is thinking...</span>
-          <div className="flex gap-1 ml-1">
+          <div className="flex gap-1 ml-1" aria-hidden="true">
             <div className="typing-dot" style=${{ background: agent.color }}></div>
             <div className="typing-dot" style=${{ background: agent.color }}></div>
             <div className="typing-dot" style=${{ background: agent.color }}></div>
@@ -561,14 +766,13 @@ function ChatArea() {
   var typingAgents = state.agents.filter(function(a) { return a.isTyping; });
   var enabledAgents = state.agents.filter(function(a) { return a.enabled; });
 
-  async function sendMessage() {
+  var sendMessage = useCallback(async function() {
     var msg = text.trim();
     if (!msg || state.isProcessing) return;
     setText('');
     dispatch({ type: 'SET_PROCESSING', payload: true });
 
-    var userMsg = { id: uid(), agentId: 'user', content: msg, timestamp: new Date().toLocaleTimeString(), meta: null };
-    dispatch({ type: 'ADD_MESSAGE', payload: userMsg });
+    dispatch({ type: 'ADD_MESSAGE', payload: { id: uid(), agentId: 'user', content: msg, timestamp: new Date().toLocaleTimeString(), meta: null } });
 
     var agentsToRespond = [];
     if (state.responseMode === 'single') {
@@ -580,7 +784,7 @@ function ChatArea() {
     }
 
     if (agentsToRespond.length === 0) {
-      dispatch({ type: 'ADD_MESSAGE', payload: { id: uid(), agentId: 'system', content: 'No agents enabled. Enable at least one agent in the sidebar.', timestamp: new Date().toLocaleTimeString(), meta: null } });
+      dispatch({ type: 'ADD_MESSAGE', payload: { id: uid(), agentId: 'system', content: 'No agents enabled. Toggle agents on in the sidebar.', timestamp: new Date().toLocaleTimeString(), meta: null } });
       dispatch({ type: 'SET_PROCESSING', payload: false });
       return;
     }
@@ -590,12 +794,9 @@ function ChatArea() {
 
     async function callAgent(agent) {
       dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { isTyping: true } } });
-
-      var personaPrefix = '[You are ' + agent.name + ', the ' + agent.role + '. ' + agent.personality + '. ';
-      if (agentsToRespond.length > 1) {
-        personaPrefix += 'Other agents in this conversation: ' + otherAgentNames + '. ';
-      }
-      personaPrefix += 'Respond in character. Keep responses focused.]\n\n';
+      var personaPrefix = '[You are ' + agent.name + ', the ' + agent.role + '. ' + agent.personality;
+      if (agentsToRespond.length > 1) personaPrefix += ' Other agents in this conversation: ' + otherAgentNames + '.';
+      personaPrefix += ' Respond in character. Keep responses focused.]\n\n';
 
       try {
         var data = await apiPost('/api/chat', {
@@ -628,7 +829,6 @@ function ChatArea() {
             }, Math.random() * 800);
           }
         });
-
         return data;
       } catch (err) {
         dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { isTyping: false } } });
@@ -641,41 +841,43 @@ function ChatArea() {
       if (state.responseMode === 'allAtOnce') {
         await Promise.all(agentsToRespond.map(callAgent));
       } else {
-        for (var i = 0; i < agentsToRespond.length; i++) {
-          await callAgent(agentsToRespond[i]);
-        }
+        for (var i = 0; i < agentsToRespond.length; i++) await callAgent(agentsToRespond[i]);
       }
     } finally {
       dispatch({ type: 'SET_PROCESSING', payload: false });
     }
-  }
+  }, [text, state.isProcessing, state.responseMode, state.selectedAgentId, state.agents, state.sessionId, state.loadout, state.apiKey, enabledAgents, dispatch]);
 
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
 
-  var enabledAgentIndicators = enabledAgents.map(function(a) {
-    return html`<div key=${a.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs cursor-pointer transition"
-      style=${{ background: (state.selectedAgentId === a.id ? a.color + '25' : 'transparent'),
-                border: '1px solid ' + (state.selectedAgentId === a.id ? a.color + '50' : 'transparent'),
-                color: a.color }}
-      onClick=${function() { dispatch({ type: 'SET_SELECTED_AGENT', payload: a.id }); }}>
-      <span>${a.emoji}</span>
-      <span className="font-medium">${a.name}</span>
-      ${a.isTyping ? html`<i className="fas fa-circle-notch fa-spin text-xs ml-0.5"></i>` : null}
-    </div>`;
-  });
+  var selectedAgent = state.agents.find(function(a) { return a.id === state.selectedAgentId; }) || {};
 
   return html`
-    <div className="flex flex-col flex-1 min-w-0">
-      <!-- Active agents bar -->
-      <div className="flex items-center gap-2 px-4 py-2 surface overflow-x-auto" style=${{ borderBottom: '1px solid var(--border)' }}>
+    <div className="flex flex-col flex-1 min-w-0" role="main">
+      <!-- Active agents strip -->
+      <div className="flex items-center gap-1.5 px-3 py-1.5 surface overflow-x-auto" style=${{ borderBottom: '1px solid var(--border)' }}
+        role="toolbar" aria-label="Active agents">
         <span className="text-xs flex-shrink-0" style=${{ color: 'var(--text-muted)' }}>Active:</span>
-        ${enabledAgentIndicators}
+        ${enabledAgents.map(function(a) {
+          return html`<button key=${a.id}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition"
+            style=${{ background: state.selectedAgentId === a.id ? a.color + '25' : 'transparent',
+                      border: '1px solid ' + (state.selectedAgentId === a.id ? a.color + '50' : 'transparent'),
+                      color: a.color }}
+            onClick=${function() { dispatch({ type: 'SET_SELECTED_AGENT', payload: a.id }); }}
+            aria-label=${"Select " + a.name} aria-pressed=${state.selectedAgentId === a.id}>
+            <span aria-hidden="true">${a.emoji}</span>
+            <span className="font-medium hidden sm:inline">${a.name}</span>
+            ${a.isTyping ? html`<i className="fas fa-circle-notch fa-spin text-xs ml-0.5" aria-hidden="true"></i>` : null}
+          </button>`;
+        })}
         ${state.tokenUsage ? html`
           <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-coins mr-1"></i>${state.tokenUsage.total} tok</span>
-            <div className="w-20 h-1.5 rounded-full" style=${{ background: 'var(--bg-surface)' }}>
+            <span className="text-xs" style=${{ color: 'var(--text-muted)' }}>${state.tokenUsage.total} tok</span>
+            <div className="w-16 h-1.5 rounded-full" style=${{ background: 'var(--bg-elevated)' }}
+              role="progressbar" aria-valuenow=${state.tokenUsage.total} aria-valuemax="8000" aria-label="Token usage">
               <div className="h-full rounded-full transition-all" style=${{ width: Math.min(100, (state.tokenUsage.total / 8000) * 100) + '%', background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }}></div>
             </div>
           </div>
@@ -683,27 +885,31 @@ function ChatArea() {
       </div>
 
       <!-- Messages -->
-      <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2.5" role="log" aria-label="Chat messages" aria-live="polite">
         ${state.messages.length === 0 ? html`
           <div className="flex flex-col items-center justify-center h-full text-center" style=${{ color: 'var(--text-muted)' }}>
-            <div className="text-5xl mb-4">🏰</div>
+            <div className="text-5xl mb-4" aria-hidden="true">\uD83C\uDFF0</div>
             <div className="text-lg font-bold mb-1" style=${{ color: 'var(--text-heading)' }}>Welcome to the Tavern</div>
-            <div className="text-sm mb-3 max-w-md">A chaotic gathering of AI agents, each with their own personality. Enable agents in the sidebar, type a message, and watch the magic unfold.</div>
-            <div className="flex gap-2 flex-wrap justify-center">
-              ${enabledAgents.slice(0, 3).map(function(a) {
+            <div className="text-sm mb-3 max-w-md">A chaotic gathering of AI agents, each with their own personality. Enable agents in the sidebar, then start chatting.</div>
+            <div className="flex gap-2 flex-wrap justify-center mb-3">
+              ${enabledAgents.slice(0, 4).map(function(a) {
                 return html`<span key=${a.id} className="text-xs px-2 py-1 rounded-full" style=${{ background: a.color + '15', border: '1px solid ' + a.color + '30', color: a.color }}>
                   ${a.emoji} ${a.name}
                 </span>`;
               })}
             </div>
-            <div className="text-xs mt-4" style=${{ color: 'var(--text-muted)' }}>Shift+Enter for newline · ${state.responseMode} mode</div>
+            <div className="text-xs flex flex-wrap gap-x-2 gap-y-1 justify-center" style=${{ color: 'var(--text-muted)' }}>
+              <span><span className="kbd">Enter</span> send</span>
+              <span><span className="kbd">Shift+Enter</span> newline</span>
+              <span><span className="kbd">Ctrl+/</span> help</span>
+            </div>
           </div>
         ` : null}
         ${state.messages.map(function(msg) {
           return html`<${MessageBubble} key=${msg.id} msg=${msg} agents=${state.agents} />`;
         })}
         ${typingAgents.map(function(a) {
-          return html`<${TypingIndicator} key=${'typing-' + a.id} agent=${a} />`;
+          return html`<${TypingIndicator} key=${'t-' + a.id} agent=${a} />`;
         })}
         <div ref=${messagesEndRef}></div>
       </div>
@@ -711,31 +917,28 @@ function ChatArea() {
       <!-- Input -->
       <div className="p-3 surface" style=${{ borderTop: '1px solid var(--border)' }}>
         <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <textarea ref=${inputRef} value=${text} onInput=${function(e) { setText(e.target.value); }}
-              onKeyDown=${handleKeyDown}
-              placeholder=${"Message the tavern" + (state.responseMode === 'single' && state.selectedAgentId ? ' (' + (state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).name + ')' : '') + "..."}
-              className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-              rows="2" disabled=${state.isProcessing}
-              style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-          </div>
+          <textarea ref=${inputRef} value=${text} onInput=${function(e) { setText(e.target.value); }}
+            onKeyDown=${handleKeyDown}
+            placeholder=${"Message" + (state.responseMode === 'single' ? ' ' + (selectedAgent.name || '') : ' the tavern') + "..."}
+            className="flex-1 px-3 py-2 rounded-lg text-sm resize-none"
+            rows="2" disabled=${state.isProcessing}
+            style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            aria-label="Chat message input" />
           <button onClick=${sendMessage} disabled=${state.isProcessing || !text.trim()}
             className="px-4 rounded-lg text-sm font-medium transition flex items-center gap-2 glow"
             style=${{ background: state.isProcessing ? 'var(--primary-dim)' : 'var(--primary)',
-                      color: '#fff', border: '1px solid var(--primary)', opacity: state.isProcessing ? 0.6 : 1 }}>
-            ${state.isProcessing ? html`<i className="fas fa-circle-notch fa-spin"></i>` : html`<i className="fas fa-paper-plane"></i>`}
+                      color: '#fff', border: '1px solid var(--primary)', opacity: (state.isProcessing || !text.trim()) ? 0.5 : 1 }}
+            aria-label="Send message">
+            ${state.isProcessing ? html`<i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i>` : html`<i className="fas fa-paper-plane" aria-hidden="true"></i>`}
           </button>
         </div>
-        <div className="flex items-center gap-2 mt-1.5 text-xs" style=${{ color: 'var(--text-muted)' }}>
-          <span>Shift+Enter for newline</span>
-          <span>·</span>
-          <span className="capitalize">${state.responseMode} mode</span>
+        <div className="flex items-center gap-2 mt-1 text-xs" style=${{ color: 'var(--text-muted)' }}>
+          <span className="capitalize">${state.responseMode}</span>
           ${state.responseMode === 'single' ? html`
-            <span>·</span>
-            <span style=${{ color: (state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).color || 'var(--primary)' }}>
-              ${(state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).emoji || ''} ${(state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).name || 'None'}
-            </span>
+            <span>\u00B7</span>
+            <span style=${{ color: selectedAgent.color || 'var(--primary)' }}>${selectedAgent.emoji || ''} ${selectedAgent.name || 'None'}</span>
           ` : null}
+          <span className="ml-auto hidden sm:inline"><span className="kbd" style=${{fontSize:'0.6rem'}}>Ctrl+/</span> shortcuts</span>
         </div>
       </div>
     </div>`;
@@ -745,138 +948,129 @@ function ChatArea() {
 function ContextPanel() {
   var ctx = useContext(AppContext);
   var state = ctx.state, dispatch = ctx.dispatch;
-  var summaryLoading = useState(false), isSummarizing = summaryLoading[0], setSummarizing = summaryLoading[1];
-  var memLoading = useState(false), isLoadingMem = memLoading[0], setLoadingMem = memLoading[1];
+  var isSummarizingState = useState(false), isSummarizing = isSummarizingState[0], setSummarizing = isSummarizingState[1];
+  var isLoadingMemState = useState(false), isLoadingMem = isLoadingMemState[0], setLoadingMem = isLoadingMemState[1];
 
   if (!state.contextPanelOpen) return null;
 
   async function loadMemories() {
-    if (!state.sessionId) { showToast('No active session yet', true); return; }
+    if (!state.sessionId) { showToast('No active session', true); return; }
     setLoadingMem(true);
     try {
       var data = await apiGet('/api/memory?session_id=' + state.sessionId + '&limit=20', state.apiKey);
       dispatch({ type: 'SET_CONTEXT_MEMORIES', payload: data.items || [] });
-    } catch (err) {
-      showToast('Memory load error: ' + err.message, true);
-    } finally { setLoadingMem(false); }
+    } catch (err) { showToast('Memory error: ' + err.message, true); }
+    finally { setLoadingMem(false); }
   }
 
   async function generateRecap() {
-    if (!state.sessionId) { showToast('No active session yet', true); return; }
+    if (!state.sessionId) { showToast('No active session', true); return; }
     setSummarizing(true);
     try {
       var data = await apiPost('/api/chat', {
         message: '[SYSTEM: Generate a concise summary of the conversation so far. Highlight key topics, decisions, and open questions. Format as bullet points.]',
-        session_id: state.sessionId,
-        loadout_id: 'fast',
+        session_id: state.sessionId, loadout_id: 'fast',
       }, state.apiKey);
       dispatch({ type: 'SET_CONTEXT_SUMMARY', payload: data.response });
-    } catch (err) {
-      showToast('Recap error: ' + err.message, true);
-    } finally { setSummarizing(false); }
+    } catch (err) { showToast('Recap error: ' + err.message, true); }
+    finally { setSummarizing(false); }
   }
 
   var enabledAgents = state.agents.filter(function(a) { return a.enabled; });
-  var messageCount = state.messages.length;
   var agentMsgCounts = {};
   state.messages.forEach(function(m) {
-    if (m.agentId !== 'user' && m.agentId !== 'system') {
-      agentMsgCounts[m.agentId] = (agentMsgCounts[m.agentId] || 0) + 1;
-    }
+    if (m.agentId !== 'user' && m.agentId !== 'system') agentMsgCounts[m.agentId] = (agentMsgCounts[m.agentId] || 0) + 1;
   });
 
   return html`
-    <aside className="flex flex-col w-72 flex-shrink-0 surface overflow-hidden"
-      style=${{ borderLeft: '1px solid var(--border)' }}>
-      <div className="p-3" style=${{ borderBottom: '1px solid var(--border)' }}>
+    <aside className="flex flex-col w-64 lg:w-72 flex-shrink-0 surface overflow-hidden"
+      style=${{ borderLeft: '1px solid var(--border)' }} role="complementary" aria-label="Context panel">
+      <div className="p-2.5" style=${{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between">
           <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>
-            <i className="fas fa-brain mr-1.5" style=${{ color: 'var(--primary)' }}></i>Context Panel
+            <i className="fas fa-brain mr-1" style=${{ color: 'var(--primary)' }} aria-hidden="true"></i>Context
           </div>
-          <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${messageCount} msgs</div>
+          <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${state.messages.length} msgs</div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
         <!-- Agent Activity -->
-        <div>
-          <div className="text-xs font-bold mb-2" style=${{ color: 'var(--text-heading)' }}>Agent Activity</div>
+        <section aria-label="Agent activity">
+          <div className="text-xs font-bold mb-1.5" style=${{ color: 'var(--text-heading)' }}>Agent Activity</div>
           ${enabledAgents.map(function(a) {
             var count = agentMsgCounts[a.id] || 0;
-            return html`<div key=${a.id} className="flex items-center gap-2 mb-1.5">
-              <span className="text-sm">${a.emoji}</span>
+            return html`<div key=${a.id} className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm" aria-hidden="true">${a.emoji}</span>
               <span className="text-xs flex-1" style=${{ color: a.color }}>${a.name}</span>
-              <div className="w-16 h-1 rounded-full" style=${{ background: 'var(--bg-elevated)' }}>
-                <div className="h-full rounded-full" style=${{ width: Math.min(100, count * 15) + '%', background: a.color }}></div>
+              <div className="w-12 h-1 rounded-full" style=${{ background: 'var(--bg-elevated)' }}
+                role="meter" aria-label=${a.name + " messages"} aria-valuenow=${count}>
+                <div className="h-full rounded-full transition-all" style=${{ width: Math.min(100, count * 15) + '%', background: a.color }}></div>
               </div>
-              <span className="text-xs w-5 text-right" style=${{ color: 'var(--text-muted)' }}>${count}</span>
+              <span className="text-xs w-4 text-right" style=${{ color: 'var(--text-muted)' }}>${count}</span>
             </div>`;
           })}
-        </div>
+        </section>
 
         <!-- Context Summary -->
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Context Summary</div>
+        <section aria-label="Context summary">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Summary</div>
             <button onClick=${generateRecap} disabled=${isSummarizing}
               className="text-xs px-2 py-0.5 rounded transition"
-              style=${{ background: 'var(--primary-dim)', color: 'var(--primary)', border: '1px solid var(--primary)' }}>
-              ${isSummarizing ? html`<i className="fas fa-circle-notch fa-spin mr-1"></i>` : html`<i className="fas fa-sync mr-1"></i>`}
+              style=${{ background: 'var(--primary-dim)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
+              aria-label="Generate conversation recap">
+              ${isSummarizing ? html`<i className="fas fa-circle-notch fa-spin mr-1" aria-hidden="true"></i>` : html`<i className="fas fa-sync mr-1" aria-hidden="true"></i>`}
               Recap
             </button>
           </div>
-          ${state.contextSummary ? html`
-            <div className="text-xs p-2 rounded leading-relaxed" style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text)' }}
-              dangerouslySetInnerHTML=${{ __html: escapeHtml(state.contextSummary).replace(/\n/g, '<br>') }}></div>
-          ` : html`
-            <div className="text-xs p-2 rounded italic" style=${{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-              No summary yet. Click Recap after chatting.
-            </div>
-          `}
-        </div>
+          <div className="text-xs p-2 rounded leading-relaxed md-content" style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: state.contextSummary ? 'var(--text)' : 'var(--text-muted)', fontStyle: state.contextSummary ? 'normal' : 'italic' }}
+            dangerouslySetInnerHTML=${{ __html: state.contextSummary ? renderMarkdown(state.contextSummary) : 'Click Recap after chatting.' }}></div>
+        </section>
 
         <!-- Shared Memory -->
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Shared Memory</div>
+        <section aria-label="Shared memory">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Memory</div>
             <button onClick=${loadMemories} disabled=${isLoadingMem}
               className="text-xs px-2 py-0.5 rounded transition"
-              style=${{ background: 'var(--secondary-dim)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}>
-              ${isLoadingMem ? html`<i className="fas fa-circle-notch fa-spin mr-1"></i>` : html`<i className="fas fa-download mr-1"></i>`}
+              style=${{ background: 'var(--secondary-dim)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}
+              aria-label="Load session memories">
+              ${isLoadingMem ? html`<i className="fas fa-circle-notch fa-spin mr-1" aria-hidden="true"></i>` : html`<i className="fas fa-download mr-1" aria-hidden="true"></i>`}
               Load
             </button>
           </div>
           ${state.contextMemories.length > 0 ? state.contextMemories.map(function(mem) {
-            var typeColors = { episodic: 'var(--primary)', semantic: '#3b82f6', summary: 'var(--secondary)' };
+            var tc = { episodic: 'var(--primary)', semantic: '#3b82f6', summary: 'var(--secondary)' };
             return html`<div key=${mem.id} className="p-2 rounded mb-1.5 text-xs" style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="px-1 py-0.5 rounded" style=${{ background: (typeColors[mem.type] || 'var(--text-muted)') + '20', color: typeColors[mem.type] || 'var(--text-muted)' }}>${mem.type}</span>
+              <div className="flex items-center gap-1 mb-0.5">
+                <span className="px-1 py-0.5 rounded" style=${{ background: (tc[mem.type]||'var(--text-muted)') + '20', color: tc[mem.type]||'var(--text-muted)' }}>${mem.type}</span>
                 <span style=${{ color: 'var(--text-muted)' }}>${mem.scope}</span>
-                <span className="ml-auto" style=${{ color: 'var(--text-muted)' }}>${mem.token_count || 0}t</span>
+                <span className="ml-auto" style=${{ color: 'var(--text-muted)' }}>${mem.token_count||0}t</span>
               </div>
-              <div style=${{ color: 'var(--text)' }}>${mem.content.length > 120 ? mem.content.slice(0, 120) + '...' : mem.content}</div>
+              <div style=${{ color: 'var(--text)' }}>${mem.content.length > 100 ? mem.content.slice(0, 100) + '...' : mem.content}</div>
             </div>`;
           }) : html`
             <div className="text-xs p-2 rounded italic" style=${{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
               Click Load to fetch session memories.
             </div>
           `}
-        </div>
+        </section>
 
         <!-- Token Breakdown -->
         ${state.tokenUsage ? html`
-          <div>
-            <div className="text-xs font-bold mb-2" style=${{ color: 'var(--text-heading)' }}>Token Breakdown</div>
-            <div className="grid grid-cols-2 gap-1.5">
-              ${[['System', state.tokenUsage.system], ['Context', state.tokenUsage.context],
-                ['History', state.tokenUsage.history], ['Message', state.tokenUsage.user_message]].map(function(pair) {
-                return html`<div key=${pair[0]} className="p-2 rounded text-center" style=${{ background: 'var(--bg-elevated)' }}>
-                  <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${pair[0]}</div>
-                  <div className="text-sm font-mono font-bold" style=${{ color: 'var(--text-heading)' }}>${pair[1] || 0}</div>
+          <section aria-label="Token breakdown">
+            <div className="text-xs font-bold mb-1.5" style=${{ color: 'var(--text-heading)' }}>Tokens</div>
+            <div className="grid grid-cols-2 gap-1">
+              ${[['Sys', state.tokenUsage.system], ['Ctx', state.tokenUsage.context],
+                ['Hist', state.tokenUsage.history], ['Msg', state.tokenUsage.user_message]].map(function(p) {
+                return html`<div key=${p[0]} className="p-1.5 rounded text-center" style=${{ background: 'var(--bg-elevated)' }}>
+                  <div className="text-xs" style=${{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>${p[0]}</div>
+                  <div className="text-xs font-mono font-bold" style=${{ color: 'var(--text-heading)' }}>${p[1] || 0}</div>
                 </div>`;
               })}
             </div>
-          </div>
+          </section>
         ` : null}
       </div>
     </aside>`;
@@ -906,6 +1100,31 @@ function App() {
     return function() { clearInterval(interval); };
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(function() {
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        dispatch({ type: 'SHOW_HELP', payload: false });
+        dispatch({ type: 'SHOW_EXPORT', payload: false });
+        return;
+      }
+      if (!e.ctrlKey && !e.metaKey) return;
+      var key = e.key.toLowerCase();
+      if (key === '/') { e.preventDefault(); dispatch({ type: 'SHOW_HELP', payload: !state.showHelp }); }
+      else if (key === 'b') { e.preventDefault(); dispatch({ type: 'TOGGLE_SIDEBAR' }); }
+      else if (key === 'i') { e.preventDefault(); dispatch({ type: 'TOGGLE_CONTEXT' }); }
+      else if (key === 'n') { e.preventDefault(); dispatch({ type: 'NEW_SESSION' }); showToast('New session'); }
+      else if (key === 'e') { e.preventDefault(); dispatch({ type: 'SHOW_EXPORT', payload: true }); }
+      else if (key >= '1' && key <= '7') {
+        e.preventDefault();
+        var idx = parseInt(key) - 1;
+        if (state.agents[idx]) dispatch({ type: 'SET_SELECTED_AGENT', payload: state.agents[idx].id });
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return function() { window.removeEventListener('keydown', onKey); };
+  }, [state.showHelp, state.agents]);
+
   var ctxValue = useMemo(function() { return { state: state, dispatch: dispatch }; }, [state]);
 
   return html`
@@ -917,6 +1136,8 @@ function App() {
           <${ChatArea} />
           <${ContextPanel} />
         </div>
+        <${HelpModal} />
+        <${ExportModal} />
       </div>
     <//>`;
 }
