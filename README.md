@@ -201,11 +201,117 @@ https://github.com/harbz07/claude-cognitive-stack
 
 ---
 
+## Real Embeddings — Supabase pgvector
+
+### Stack
+```
+soul-os.cc → Hono/Workers backend → Supabase (pgvector) → OpenAI text-embedding-3-small
+```
+
+### Embedding Backend (priority order)
+| Priority | Backend | Dimensions | Trigger |
+|----------|---------|-----------|---------|
+| 1 | OpenAI `text-embedding-3-small` | 1536 | `OPENAI_API_KEY` set |
+| 2 | Cloudflare AI `bge-small-en-v1.5` | 384 | `AI` binding present |
+| 3 | Keyword fallback | — | Always available |
+
+### Supabase Setup (one-time SQL)
+```sql
+create extension if not exists vector;
+
+create table if not exists documents (
+  id        uuid primary key default gen_random_uuid(),
+  content   text not null,
+  metadata  jsonb,
+  embedding vector(1536)
+);
+
+create or replace function match_documents(
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count     int
+)
+returns table (id uuid, content text, metadata jsonb, similarity float)
+language plpgsql as $$
+begin
+  return query
+  select d.id, d.content, d.metadata,
+         1 - (d.embedding <=> query_embedding) as similarity
+  from documents d
+  where 1 - (d.embedding <=> query_embedding) > match_threshold
+  order by d.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+```
+
+### New Environment Variables
+```ini
+# Supabase
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+
+# Optional: separate embed endpoint (defaults to standard OpenAI)
+OPENAI_EMBED_BASE_URL=https://api.openai.com/v1
+```
+
+### New API Endpoints
+
+**`POST /api/ingest`** — Embed and store a document
+```json
+{
+  "content": "The thalamus threshold is 0.72 for default loadout.",
+  "type": "semantic",
+  "scope": "project",
+  "project_id": "proj_abc",
+  "tags": ["config", "thalamus"]
+}
+```
+Response includes `embedding_backend`, `embedding_dims`, `vector_id`.
+
+**`POST /api/search`** — Semantic search
+```json
+{
+  "query": "what is the thalamus threshold?",
+  "matchThreshold": 0.72,
+  "matchCount": 5,
+  "project_id": "proj_abc"
+}
+```
+Response: `{ matches: [{ id, content, metadata, similarity }], backend }`.
+
+### Flow: Memory Write → pgvector Sync
+```
+Consolidation Worker
+  ├── LLM summarize transcript → key_facts[]
+  ├── embed(summary)   → OpenAI 1536-dim
+  ├── D1.insertMemoryItem()      (keyword fallback always written)
+  └── Supabase.insert()          (pgvector, if configured)
+
+RAG Stage 3 (knowledge_graph)
+  ├── if queryEmbedding + Supabase → match_documents RPC (cosine)
+  └── else → D1 keyword scoring (always available)
+```
+
+---
+
+## Configuration
+
+```ini
+# .dev.vars
+OPENAI_API_KEY=gsk-your-key
+OPENAI_BASE_URL=https://www.genspark.ai/api/llm_proxy/v1
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+MASTER_KEY=dev-master-key
+```
+
+---
+
 ## Pending / Future Work
 
-- [ ] Real embeddings (OpenAI `text-embedding-3-small` or Cloudflare `@cf/baai/bge-small-en-v1.5`)
-- [ ] Document indexing for `project_docs` RAG source
 - [ ] Streaming responses via SSE (`/api/chat/stream`)
+- [ ] Document indexing for `project_docs` RAG source (chunking pipeline)
 - [ ] Cross-session identity graph (user_profile table)
 - [ ] Memory audit endpoints (`/api/memory/:id/provenance`)
 - [ ] Multi-agent loadouts (planner + executor sharing memory scope)
@@ -214,6 +320,6 @@ https://github.com/harbz07/claude-cognitive-stack
 
 ---
 
-**Version**: 2.0 — Full spec alignment  
-**Last Updated**: 2026-02-19  
+**Version**: 3.0 — Real embeddings + Supabase pgvector  
+**Last Updated**: 2026-02-21  
 **Spec Reference**: https://www.basecampgrounds.com
