@@ -171,12 +171,27 @@ export class CognitiveOrchestrator {
     // ── STAGE 4: THALAMUS ─────────────────────────────────────
     const t3 = Date.now()
 
-    // System prompt injection
-    const baseSystem = `You are a helpful, memory-aware AI assistant with persistent context across conversations.
+    // System prompt injection — with optional multi-agent persona
+    const agentName = req.metadata?.agent_name as string | undefined
+    const agentPersona = req.metadata?.agent_persona as string | undefined
+    const activeAgents = req.metadata?.active_agents as string[] | undefined
+
+    let baseSystem: string
+    if (agentPersona) {
+      const otherAgents = activeAgents?.filter(a => a !== agentName) ?? []
+      baseSystem = `${agentPersona}
+
+${otherAgents.length > 0 ? `You are "${agentName}" in a multi-agent conversation. Other participants: ${otherAgents.join(', ')}. Messages from other agents appear in conversation history tagged with their name. Stay in character.\n\n` : ''}You have access to retrieved memories and conversation history.
+When referencing retrieved information, cite it explicitly.
+Current session: ${session.session_id.slice(0, 8)}...
+${session.project_id ? `Project context: ${session.project_id}` : ''}`
+    } else {
+      baseSystem = `You are a helpful, memory-aware AI assistant with persistent context across conversations.
 You have access to retrieved memories and conversation history.
 When referencing retrieved information, cite it explicitly.
 Current session: ${session.session_id.slice(0, 8)}...
 ${session.project_id ? `Project context: ${session.project_id}` : ''}`
+    }
 
     const {
       packed,
@@ -322,10 +337,14 @@ ${session.project_id ? `Project context: ${session.project_id}` : ''}`
       trace_id:    traceId,
       message_id:  userMsgId,
     }
+    const taggedResponse = agentName
+      ? `[${agentName}] ${generateResult.response}`
+      : generateResult.response
+
     const assistantEntry: SlidingWindowEntry = {
       role:        'assistant',
-      content:     generateResult.response,
-      token_count: generateResult.usage.output_tokens || estimateTokens(generateResult.response),
+      content:     taggedResponse,
+      token_count: generateResult.usage.output_tokens || estimateTokens(taggedResponse),
       timestamp:   now,
       trace_id:    traceId,
       message_id:  assistantMsgId,
