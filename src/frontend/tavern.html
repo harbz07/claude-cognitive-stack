@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Soul OS — Tavern</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
+
+    /* ── Theme CSS Variables ──────────────────────────────── */
+    [data-theme="neon"] {
+      --bg: #06080f; --bg-surface: rgba(6,8,15,0.92); --bg-elevated: rgba(15,20,40,0.95);
+      --border: rgba(0,255,255,0.12); --border-active: rgba(0,255,255,0.35);
+      --text: #d0e0f0; --text-muted: #4a6080; --text-heading: #e0f4ff;
+      --primary: #00ffff; --primary-dim: rgba(0,255,255,0.15);
+      --secondary: #ff00ff; --secondary-dim: rgba(255,0,255,0.12);
+      --accent: #f0ff00; --success: #00ff88; --error: #ff3366;
+      --glow-primary: 0 0 20px rgba(0,255,255,0.25); --glow-secondary: 0 0 20px rgba(255,0,255,0.2);
+      --scrollbar-track: rgba(0,255,255,0.03); --scrollbar-thumb: rgba(0,255,255,0.15);
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    [data-theme="cyberpunk"] {
+      --bg: #0a0408; --bg-surface: rgba(10,4,8,0.92); --bg-elevated: rgba(25,10,18,0.95);
+      --border: rgba(255,107,53,0.12); --border-active: rgba(255,107,53,0.4);
+      --text: #fce4ec; --text-muted: #7a4a5a; --text-heading: #fff0f3;
+      --primary: #ff6b35; --primary-dim: rgba(255,107,53,0.15);
+      --secondary: #c026d3; --secondary-dim: rgba(192,38,211,0.12);
+      --accent: #ef4444; --success: #22c55e; --error: #ef4444;
+      --glow-primary: 0 0 20px rgba(255,107,53,0.3); --glow-secondary: 0 0 20px rgba(192,38,211,0.2);
+      --scrollbar-track: rgba(255,107,53,0.03); --scrollbar-thumb: rgba(255,107,53,0.15);
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    [data-theme="haunted"] {
+      --bg: #000000; --bg-surface: rgba(0,5,0,0.95); --bg-elevated: rgba(0,10,0,0.95);
+      --border: rgba(0,255,0,0.08); --border-active: rgba(0,255,0,0.3);
+      --text: #00dd00; --text-muted: #005500; --text-heading: #00ff00;
+      --primary: #00ff00; --primary-dim: rgba(0,255,0,0.1);
+      --secondary: #00cc00; --secondary-dim: rgba(0,204,0,0.08);
+      --accent: #33ff33; --success: #00ff00; --error: #ff0000;
+      --glow-primary: 0 0 15px rgba(0,255,0,0.2); --glow-secondary: 0 0 10px rgba(0,255,0,0.1);
+      --scrollbar-track: rgba(0,255,0,0.02); --scrollbar-thumb: rgba(0,255,0,0.12);
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    [data-theme="soulOS"] {
+      --bg: #0f172a; --bg-surface: rgba(255,255,255,0.04); --bg-elevated: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.08); --border-active: rgba(99,102,241,0.4);
+      --text: #e2e8f0; --text-muted: #64748b; --text-heading: #f1f5f9;
+      --primary: #6366f1; --primary-dim: rgba(99,102,241,0.15);
+      --secondary: #10b981; --secondary-dim: rgba(16,185,129,0.12);
+      --accent: #f59e0b; --success: #10b981; --error: #ef4444;
+      --glow-primary: 0 0 20px rgba(99,102,241,0.25); --glow-secondary: 0 0 15px rgba(16,185,129,0.15);
+      --scrollbar-track: rgba(255,255,255,0.02); --scrollbar-thumb: rgba(255,255,255,0.12);
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    body { background: var(--bg); color: var(--text); }
+
+    .surface { background: var(--bg-surface); border: 1px solid var(--border); }
+    .elevated { background: var(--bg-elevated); border: 1px solid var(--border); }
+    .glow { box-shadow: var(--glow-primary); }
+    .glow-secondary { box-shadow: var(--glow-secondary); }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb); opacity: 0.8; }
+
+    /* ── Animations ──────────────────────────────────────── */
+    @keyframes pulse-glow { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes slide-in-right { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes slide-in-left { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes fade-in-up { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes typing-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+    @keyframes float-reaction { 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-30px) scale(1.3);opacity:0} }
+    @keyframes scanline { 0%{top:-100%} 100%{top:100%} }
+    @keyframes crt-flicker { 0%,100%{opacity:1} 50%{opacity:0.97} }
+    @keyframes glitch-shift { 0%{transform:translate(0)} 20%{transform:translate(-2px,1px)} 40%{transform:translate(1px,-1px)} 60%{transform:translate(-1px,2px)} 80%{transform:translate(2px,-1px)} 100%{transform:translate(0)} }
+    @keyframes neon-pulse { 0%,100%{text-shadow:0 0 5px var(--primary),0 0 10px var(--primary)} 50%{text-shadow:0 0 10px var(--primary),0 0 20px var(--primary),0 0 30px var(--primary)} }
+
+    .animate-fade-in-up { animation: fade-in-up 0.3s ease-out; }
+    .animate-slide-right { animation: slide-in-right 0.3s ease-out; }
+    .animate-pulse-glow { animation: pulse-glow 1.5s ease-in-out infinite; }
+    .neon-text { animation: neon-pulse 2s ease-in-out infinite; }
+    .reaction-float { animation: float-reaction 1.2s ease-out forwards; }
+
+    [data-theme="cyberpunk"] body::after {
+      content:''; position:fixed; top:0; left:0; right:0; bottom:0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events:none; z-index:9999;
+    }
+    [data-theme="haunted"] body { animation: crt-flicker 0.1s infinite; font-family: 'JetBrains Mono', monospace; }
+    [data-theme="haunted"] body::after {
+      content:''; position:fixed; top:-100%; left:0; right:0; height:100%; z-index:9999; pointer-events:none;
+      background: linear-gradient(transparent 50%, rgba(0,255,0,0.02) 50%);
+      background-size: 100% 4px; animation: scanline 8s linear infinite;
+    }
+
+    /* ── Utility ─────────────────────────────────────────── */
+    .agent-msg { border-left: 3px solid var(--agent-color, var(--primary)); }
+    .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: typing-bounce 1s ease-in-out infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+    textarea:focus, input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 0; }
+    input, textarea, select { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); }
+    button { cursor: pointer; }
+
+    .toast-enter { animation: fade-in-up 0.3s ease-out; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+"use strict";
+var htm_module = htm; // htm is loaded as UMD global
+var html = htm_module.bind(React.createElement);
+var useState = React.useState, useEffect = React.useEffect, useRef = React.useRef,
+    useCallback = React.useCallback, useMemo = React.useMemo, useReducer = React.useReducer,
+    createContext = React.createContext, useContext = React.useContext, memo = React.memo;
+
+// ════════════════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════════════════
+
+var THEMES = [
+  { id: 'neon', name: 'Neon Night', emoji: '💜' },
+  { id: 'cyberpunk', name: 'Cyberpunk', emoji: '🔥' },
+  { id: 'haunted', name: 'Haunted Terminal', emoji: '👻' },
+  { id: 'soulOS', name: 'Soul OS', emoji: '🧠' },
+];
+
+var AGENT_COLORS = {
+  cortex: '#6366f1', philosopher: '#8b5cf6', comedian: '#f59e0b',
+  devil: '#ef4444', researcher: '#3b82f6', creative: '#ec4899',
+  strategist: '#10b981',
+};
+
+var AVAILABLE_ROLES = [
+  'Generalist', 'Philosopher', 'Comedian', "Devil's Advocate",
+  'Researcher', 'Creative', 'Strategist', 'Poet', 'Historian', 'Futurist',
+];
+
+var DEFAULT_AGENTS = [
+  { id: 'cortex', name: 'Cortex', emoji: '🧠', role: 'Generalist',
+    personality: 'The primary cognitive agent. Precise, helpful, and context-aware. Synthesizes information and coordinates with other agents.',
+    color: AGENT_COLORS.cortex, enabled: true, isTyping: false, lastReaction: null },
+  { id: 'philosopher', name: 'Sophia', emoji: '🤔', role: 'Philosopher',
+    personality: 'Questions everything. Explores the deeper meaning behind topics. Loves analogies, Socratic questioning, and existential tangents.',
+    color: AGENT_COLORS.philosopher, enabled: false, isTyping: false, lastReaction: null },
+  { id: 'comedian', name: 'Jester', emoji: '😂', role: 'Comedian',
+    personality: 'Finds humor in everything. Makes witty observations, puns, and occasionally derails with hilarious tangents. Keeps morale high.',
+    color: AGENT_COLORS.comedian, enabled: false, isTyping: false, lastReaction: null },
+  { id: 'devil', name: 'Advocate', emoji: '😈', role: "Devil's Advocate",
+    personality: "Challenges assumptions ruthlessly. If everyone agrees, they disagree. Points out blind spots, risks, and uncomfortable truths.",
+    color: AGENT_COLORS.devil, enabled: false, isTyping: false, lastReaction: null },
+  { id: 'researcher', name: 'Atlas', emoji: '🔬', role: 'Researcher',
+    personality: 'Methodical and thorough. Cites sources, structures arguments, and provides deep technical analysis. Loves data and precision.',
+    color: AGENT_COLORS.researcher, enabled: false, isTyping: false, lastReaction: null },
+  { id: 'creative', name: 'Muse', emoji: '🎨', role: 'Creative',
+    personality: 'Wildly imaginative. Proposes unconventional solutions, creates vivid metaphors, and thinks in colors and shapes rather than logic.',
+    color: AGENT_COLORS.creative, enabled: false, isTyping: false, lastReaction: null },
+  { id: 'strategist', name: 'Bishop', emoji: '♟️', role: 'Strategist',
+    personality: 'Thinks five moves ahead. Focuses on outcomes, trade-offs, and optimal paths. Loves game theory and systems thinking.',
+    color: AGENT_COLORS.strategist, enabled: false, isTyping: false, lastReaction: null },
+];
+
+var REACTION_POOL = ['🤔','💡','👀','😏','🔥','⚡','💬','👏','😮','🧐','✨','💀'];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function escapeHtml(t) { var d = document.createElement('div'); d.appendChild(document.createTextNode(t||'')); return d.innerHTML; }
+function randomReaction() { return REACTION_POOL[Math.floor(Math.random()*REACTION_POOL.length)]; }
+function clamp(v,lo,hi) { return Math.max(lo,Math.min(hi,v)); }
+
+// ════════════════════════════════════════════════════════════
+// STATE MANAGEMENT
+// ════════════════════════════════════════════════════════════
+
+var initialState = {
+  theme: localStorage.getItem('st_theme') || 'neon',
+  apiKey: localStorage.getItem('st_api_key') || 'crs_demo',
+  sessionId: localStorage.getItem('st_session_id') || null,
+  agents: JSON.parse(localStorage.getItem('st_agents') || 'null') || DEFAULT_AGENTS,
+  messages: [],
+  contextSummary: '',
+  contextMemories: [],
+  isProcessing: false,
+  responseMode: localStorage.getItem('st_response_mode') || 'roundRobin',
+  selectedAgentId: 'cortex',
+  health: { status: 'checking', ready: false },
+  sidebarOpen: true,
+  contextPanelOpen: true,
+  loadout: localStorage.getItem('st_loadout') || 'default',
+  tokenUsage: null,
+};
+
+function appReducer(state, action) {
+  switch (action.type) {
+    case 'SET_THEME':
+      localStorage.setItem('st_theme', action.payload);
+      return Object.assign({}, state, { theme: action.payload });
+    case 'SET_API_KEY':
+      localStorage.setItem('st_api_key', action.payload);
+      return Object.assign({}, state, { apiKey: action.payload });
+    case 'SET_SESSION':
+      if (action.payload) localStorage.setItem('st_session_id', action.payload);
+      else localStorage.removeItem('st_session_id');
+      return Object.assign({}, state, { sessionId: action.payload });
+    case 'SET_AGENTS':
+      localStorage.setItem('st_agents', JSON.stringify(action.payload));
+      return Object.assign({}, state, { agents: action.payload });
+    case 'UPDATE_AGENT':
+      var updated = state.agents.map(function(a) { return a.id === action.payload.id ? Object.assign({}, a, action.payload.changes) : a; });
+      localStorage.setItem('st_agents', JSON.stringify(updated));
+      return Object.assign({}, state, { agents: updated });
+    case 'ADD_MESSAGE':
+      return Object.assign({}, state, { messages: state.messages.concat([action.payload]) });
+    case 'SET_MESSAGES':
+      return Object.assign({}, state, { messages: action.payload });
+    case 'SET_PROCESSING':
+      return Object.assign({}, state, { isProcessing: action.payload });
+    case 'SET_RESPONSE_MODE':
+      localStorage.setItem('st_response_mode', action.payload);
+      return Object.assign({}, state, { responseMode: action.payload });
+    case 'SET_SELECTED_AGENT':
+      return Object.assign({}, state, { selectedAgentId: action.payload });
+    case 'SET_HEALTH':
+      return Object.assign({}, state, { health: action.payload });
+    case 'TOGGLE_SIDEBAR':
+      return Object.assign({}, state, { sidebarOpen: !state.sidebarOpen });
+    case 'TOGGLE_CONTEXT':
+      return Object.assign({}, state, { contextPanelOpen: !state.contextPanelOpen });
+    case 'SET_CONTEXT_SUMMARY':
+      return Object.assign({}, state, { contextSummary: action.payload });
+    case 'SET_CONTEXT_MEMORIES':
+      return Object.assign({}, state, { contextMemories: action.payload });
+    case 'SET_LOADOUT':
+      localStorage.setItem('st_loadout', action.payload);
+      return Object.assign({}, state, { loadout: action.payload });
+    case 'SET_TOKEN_USAGE':
+      return Object.assign({}, state, { tokenUsage: action.payload });
+    case 'NEW_SESSION':
+      localStorage.removeItem('st_session_id');
+      return Object.assign({}, state, { sessionId: null, messages: [], contextSummary: '', contextMemories: [], tokenUsage: null });
+    default:
+      return state;
+  }
+}
+
+var AppContext = createContext(null);
+
+// ════════════════════════════════════════════════════════════
+// API HELPERS
+// ════════════════════════════════════════════════════════════
+
+function apiHeaders(apiKey) {
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+}
+
+async function apiGet(path, apiKey) {
+  var r = await fetch(path, { headers: apiHeaders(apiKey) });
+  if (!r.ok) { var e = await r.json().catch(function(){return {error:r.statusText}}); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+async function apiPost(path, body, apiKey) {
+  var r = await fetch(path, { method: 'POST', headers: apiHeaders(apiKey), body: JSON.stringify(body) });
+  if (!r.ok) { var e = await r.json().catch(function(){return {error:r.statusText}}); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+// ════════════════════════════════════════════════════════════
+// COMPONENTS
+// ════════════════════════════════════════════════════════════
+
+// ── Toast ───────────────────────────────────────────────────
+var toastQueue = [];
+function showToast(msg, isError) {
+  var el = document.createElement('div');
+  el.className = 'fixed bottom-4 right-4 z-[9999] px-4 py-2 rounded-lg text-sm shadow-xl toast-enter';
+  el.style.cssText = 'background:' + (isError ? 'var(--error)' : 'var(--primary)') + ';color:#fff;';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function() { el.remove(); }, 3000);
+}
+
+// ── TopBar ──────────────────────────────────────────────────
+function TopBar() {
+  var ctx = useContext(AppContext);
+  var state = ctx.state, dispatch = ctx.dispatch;
+  var keyRef = useRef(null);
+
+  function saveKey() {
+    var val = keyRef.current ? keyRef.current.value.trim() : '';
+    if (val) { dispatch({ type: 'SET_API_KEY', payload: val }); showToast('API key saved'); }
+  }
+
+  var healthColor = state.health.status === 'ok' ? (state.health.ready ? 'var(--success)' : 'var(--accent)') : 'var(--error)';
+  var healthLabel = state.health.status === 'ok' ? (state.health.ready ? 'Ready' : 'No Model Key') : 'Offline';
+
+  return html`
+    <nav className="flex items-center justify-between px-4 py-2 surface" style=${{ borderBottom: '1px solid var(--border)' }}>
+      <div className="flex items-center gap-3">
+        <button onClick=${function() { dispatch({ type: 'TOGGLE_SIDEBAR' }); }}
+          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--primary)' }}>
+          <i className="fas fa-bars text-sm"></i>
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏰</span>
+          <div>
+            <span className="font-bold text-sm" style=${{ color: 'var(--text-heading)' }}>Soul OS</span>
+            <span className="text-xs ml-1.5 neon-text" style=${{ color: 'var(--primary)' }}>Tavern</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <!-- Theme selector -->
+        <div className="flex gap-1">
+          ${THEMES.map(function(t) {
+            return html`<button key=${t.id} onClick=${function() { dispatch({ type: 'SET_THEME', payload: t.id }); }}
+              className=${"px-2 py-1 rounded text-xs transition " + (state.theme === t.id ? 'glow' : '')}
+              style=${{ background: state.theme === t.id ? 'var(--primary-dim)' : 'transparent',
+                        border: '1px solid ' + (state.theme === t.id ? 'var(--primary)' : 'var(--border)'),
+                        color: 'var(--text)' }}
+              title=${t.name}>${t.emoji}</button>`;
+          })}
+        </div>
+
+        <!-- Health -->
+        <div className="flex items-center gap-1.5">
+          <div className=${"w-2 h-2 rounded-full " + (state.health.status === 'ok' ? '' : 'animate-pulse-glow')}
+            style=${{ background: healthColor }}></div>
+          <span className="text-xs" style=${{ color: healthColor }}>${healthLabel}</span>
+        </div>
+
+        <!-- API Key -->
+        <div className="flex gap-1">
+          <input ref=${keyRef} type="password" placeholder="API Key (crs_...)" defaultValue=${state.apiKey}
+            className="text-xs px-2 py-1 rounded w-32"
+            onKeyDown=${function(e) { if (e.key === 'Enter') saveKey(); }} />
+          <button onClick=${saveKey} className="text-xs px-2 py-1 rounded font-medium transition"
+            style=${{ background: 'var(--primary)', color: '#fff' }}>Save</button>
+        </div>
+
+        <button onClick=${function() { dispatch({ type: 'TOGGLE_CONTEXT' }); }}
+          className="p-1.5 rounded hover:opacity-80 transition" style=${{ color: 'var(--primary)' }}>
+          <i className="fas fa-brain text-sm"></i>
+        </button>
+      </div>
+    </nav>`;
+}
+
+// ── Agent Card (Sidebar) ────────────────────────────────────
+function AgentCard(props) {
+  var agent = props.agent, dispatch = props.dispatch, isSelected = props.isSelected;
+  var editOpen = useState(false), isEditing = editOpen[0], setEditing = editOpen[1];
+  var nameRef = useRef(null);
+  var personalityRef = useRef(null);
+
+  function toggle() {
+    dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { enabled: !agent.enabled } } });
+  }
+  function select() {
+    dispatch({ type: 'SET_SELECTED_AGENT', payload: agent.id });
+  }
+  function saveEdit() {
+    var changes = {};
+    if (nameRef.current) changes.name = nameRef.current.value;
+    if (personalityRef.current) changes.personality = personalityRef.current.value;
+    dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: changes } });
+    setEditing(false);
+  }
+
+  return html`
+    <div className=${"rounded-lg p-2.5 mb-1.5 transition cursor-pointer animate-fade-in-up " + (isSelected ? 'glow' : '')}
+      style=${{ background: isSelected ? agent.color + '15' : 'var(--bg-surface)',
+                border: '1px solid ' + (isSelected ? agent.color + '40' : 'var(--border)'),
+                opacity: agent.enabled ? 1 : 0.45 }}
+      onClick=${select}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-lg relative">
+            ${agent.emoji}
+            ${agent.isTyping ? html`<span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full animate-pulse-glow" style=${{ background: agent.color }}></span>` : null}
+            ${agent.lastReaction ? html`<span className="absolute -top-3 -right-2 text-sm reaction-float">${agent.lastReaction}</span>` : null}
+          </span>
+          <div>
+            <div className="text-xs font-semibold" style=${{ color: agent.color }}>${agent.name}</div>
+            <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${agent.role}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick=${function(e) { e.stopPropagation(); setEditing(!isEditing); }}
+            className="p-1 rounded text-xs transition hover:opacity-80"
+            style=${{ color: 'var(--text-muted)' }}>
+            <i className=${"fas fa-" + (isEditing ? "check" : "cog")}></i>
+          </button>
+          <button onClick=${function(e) { e.stopPropagation(); toggle(); }}
+            className="p-1 rounded text-xs transition"
+            style=${{ color: agent.enabled ? 'var(--success)' : 'var(--text-muted)' }}>
+            <i className=${"fas fa-" + (agent.enabled ? "toggle-on" : "toggle-off")}></i>
+          </button>
+        </div>
+      </div>
+      ${isEditing ? html`
+        <div className="mt-2 space-y-1.5 animate-fade-in-up" onClick=${function(e) { e.stopPropagation(); }}>
+          <input ref=${nameRef} defaultValue=${agent.name} placeholder="Name"
+            className="w-full text-xs px-2 py-1 rounded" />
+          <select className="w-full text-xs px-2 py-1 rounded"
+            value=${agent.role} onChange=${function(e) {
+              dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { role: e.target.value } } });
+            }}>
+            ${AVAILABLE_ROLES.map(function(r) { return html`<option key=${r} value=${r}>${r}</option>`; })}
+          </select>
+          <textarea ref=${personalityRef} defaultValue=${agent.personality} rows="2"
+            className="w-full text-xs px-2 py-1 rounded resize-none" placeholder="Personality..." />
+          <button onClick=${saveEdit} className="w-full text-xs py-1 rounded font-medium transition"
+            style=${{ background: agent.color, color: '#fff' }}>Save Changes</button>
+        </div>
+      ` : null}
+    </div>`;
+}
+
+// ── Agent Sidebar ───────────────────────────────────────────
+function AgentSidebar() {
+  var ctx = useContext(AppContext);
+  var state = ctx.state, dispatch = ctx.dispatch;
+  var enabledCount = state.agents.filter(function(a) { return a.enabled; }).length;
+
+  if (!state.sidebarOpen) return null;
+
+  return html`
+    <aside className="flex flex-col w-56 flex-shrink-0 surface overflow-hidden animate-slide-right"
+      style=${{ borderRight: '1px solid var(--border)' }}>
+      <div className="p-3 flex items-center justify-between" style=${{ borderBottom: '1px solid var(--border)' }}>
+        <div>
+          <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Agents</div>
+          <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${enabledCount}/7 active</div>
+        </div>
+        <select className="text-xs px-2 py-1 rounded" value=${state.responseMode}
+          onChange=${function(e) { dispatch({ type: 'SET_RESPONSE_MODE', payload: e.target.value }); }}>
+          <option value="single">Single</option>
+          <option value="roundRobin">Round Robin</option>
+          <option value="allAtOnce">All at Once</option>
+        </select>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+        ${state.agents.map(function(agent) {
+          return html`<${AgentCard} key=${agent.id} agent=${agent} dispatch=${dispatch}
+            isSelected=${state.selectedAgentId === agent.id} />`;
+        })}
+      </div>
+
+      <div className="p-3" style=${{ borderTop: '1px solid var(--border)' }}>
+        <div className="text-xs mb-1" style=${{ color: 'var(--text-muted)' }}>Loadout</div>
+        <select className="w-full text-xs px-2 py-1 rounded mb-2" value=${state.loadout}
+          onChange=${function(e) { dispatch({ type: 'SET_LOADOUT', payload: e.target.value }); }}>
+          <option value="default">Default</option>
+          <option value="fast">Fast (Mini)</option>
+          <option value="deep">Deep (Opus)</option>
+        </select>
+        <div className="text-xs mb-1" style=${{ color: 'var(--text-muted)' }}>Session</div>
+        <div className="text-xs font-mono break-all mb-1.5" style=${{ color: 'var(--text-muted)' }}>
+          ${state.sessionId ? state.sessionId.slice(0, 20) + '...' : 'Auto (new)'}
+        </div>
+        <button onClick=${function() { dispatch({ type: 'NEW_SESSION' }); showToast('New session'); }}
+          className="w-full text-xs py-1.5 rounded font-medium transition"
+          style=${{ background: 'var(--primary-dim)', border: '1px solid var(--primary)', color: 'var(--primary)' }}>
+          <i className="fas fa-plus mr-1"></i>New Session
+        </button>
+      </div>
+    </aside>`;
+}
+
+// ── Message Bubble ──────────────────────────────────────────
+var MessageBubble = memo(function(props) {
+  var msg = props.msg, agents = props.agents;
+  var isUser = msg.agentId === 'user';
+  var isSystem = msg.agentId === 'system';
+  var agent = !isUser && !isSystem ? agents.find(function(a) { return a.id === msg.agentId; }) : null;
+  var agentColor = agent ? agent.color : (isUser ? 'var(--primary)' : 'var(--text-muted)');
+  var agentName = agent ? agent.name : (isUser ? 'You' : 'System');
+  var agentEmoji = agent ? agent.emoji : (isUser ? '👤' : '⚙️');
+
+  var contentHtml = escapeHtml(msg.content).replace(/\n/g, '<br>');
+
+  return html`
+    <div className="agent-msg rounded-lg p-3 animate-fade-in-up" style=${{ '--agent-color': agentColor, background: agentColor + '08' }}>
+      <div className="flex items-start gap-2.5">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base"
+          style=${{ background: agentColor + '20', border: '1px solid ' + agentColor + '30' }}>
+          ${agentEmoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold" style=${{ color: agentColor }}>${agentName}</span>
+            ${agent ? html`<span className="text-xs px-1.5 py-0.5 rounded" style=${{ background: agentColor + '15', color: agentColor + 'cc' }}>${agent.role}</span>` : null}
+            <span className="text-xs ml-auto" style=${{ color: 'var(--text-muted)' }}>${msg.timestamp}</span>
+          </div>
+          <div className="text-sm leading-relaxed" style=${{ color: 'var(--text)' }}
+            dangerouslySetInnerHTML=${{ __html: contentHtml }}></div>
+          ${msg.meta ? html`
+            <div className="flex flex-wrap items-center gap-2 mt-2 pt-2" style=${{ borderTop: '1px solid var(--border)' }}>
+              ${(msg.meta.skills || []).map(function(s) {
+                return html`<span key=${s} className="text-xs px-1.5 py-0.5 rounded" style=${{ background: 'var(--primary-dim)', color: 'var(--primary)' }}>${s}</span>`;
+              })}
+              ${msg.meta.memory ? html`<span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-brain mr-1"></i>${msg.meta.memory} memories</span>` : null}
+              ${msg.meta.tokens ? html`<span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-coins mr-1"></i>${msg.meta.tokens.total} tokens</span>` : null}
+              ${msg.meta.traceId ? html`<span className="text-xs font-mono" style=${{ color: 'var(--text-muted)' }}>${msg.meta.traceId.slice(0,8)}</span>` : null}
+            </div>
+          ` : null}
+        </div>
+      </div>
+    </div>`;
+});
+
+// ── Typing Indicator ────────────────────────────────────────
+function TypingIndicator(props) {
+  var agent = props.agent;
+  return html`
+    <div className="agent-msg rounded-lg p-3 animate-fade-in-up" style=${{ '--agent-color': agent.color, background: agent.color + '08' }}>
+      <div className="flex items-center gap-2.5">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base"
+          style=${{ background: agent.color + '20', border: '1px solid ' + agent.color + '30' }}>
+          ${agent.emoji}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-bold" style=${{ color: agent.color }}>${agent.name}</span>
+          <span className="text-xs" style=${{ color: 'var(--text-muted)' }}>is thinking...</span>
+          <div className="flex gap-1 ml-1">
+            <div className="typing-dot" style=${{ background: agent.color }}></div>
+            <div className="typing-dot" style=${{ background: agent.color }}></div>
+            <div className="typing-dot" style=${{ background: agent.color }}></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Chat Area ───────────────────────────────────────────────
+function ChatArea() {
+  var ctx = useContext(AppContext);
+  var state = ctx.state, dispatch = ctx.dispatch;
+  var messagesEndRef = useRef(null);
+  var inputRef = useRef(null);
+  var inputText = useState(''), text = inputText[0], setText = inputText[1];
+
+  useEffect(function() {
+    if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [state.messages, state.agents]);
+
+  var typingAgents = state.agents.filter(function(a) { return a.isTyping; });
+  var enabledAgents = state.agents.filter(function(a) { return a.enabled; });
+
+  async function sendMessage() {
+    var msg = text.trim();
+    if (!msg || state.isProcessing) return;
+    setText('');
+    dispatch({ type: 'SET_PROCESSING', payload: true });
+
+    var userMsg = { id: uid(), agentId: 'user', content: msg, timestamp: new Date().toLocaleTimeString(), meta: null };
+    dispatch({ type: 'ADD_MESSAGE', payload: userMsg });
+
+    var agentsToRespond = [];
+    if (state.responseMode === 'single') {
+      var sel = state.agents.find(function(a) { return a.id === state.selectedAgentId && a.enabled; });
+      if (sel) agentsToRespond = [sel];
+      else if (enabledAgents.length > 0) agentsToRespond = [enabledAgents[0]];
+    } else {
+      agentsToRespond = enabledAgents;
+    }
+
+    if (agentsToRespond.length === 0) {
+      dispatch({ type: 'ADD_MESSAGE', payload: { id: uid(), agentId: 'system', content: 'No agents enabled. Enable at least one agent in the sidebar.', timestamp: new Date().toLocaleTimeString(), meta: null } });
+      dispatch({ type: 'SET_PROCESSING', payload: false });
+      return;
+    }
+
+    var currentSessionId = state.sessionId;
+    var otherAgentNames = agentsToRespond.map(function(a) { return a.name + ' (' + a.role + ')'; }).join(', ');
+
+    async function callAgent(agent) {
+      dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { isTyping: true } } });
+
+      var personaPrefix = '[You are ' + agent.name + ', the ' + agent.role + '. ' + agent.personality + '. ';
+      if (agentsToRespond.length > 1) {
+        personaPrefix += 'Other agents in this conversation: ' + otherAgentNames + '. ';
+      }
+      personaPrefix += 'Respond in character. Keep responses focused.]\n\n';
+
+      try {
+        var data = await apiPost('/api/chat', {
+          message: personaPrefix + msg,
+          session_id: currentSessionId || undefined,
+          loadout_id: state.loadout,
+          metadata: { agent_id: agent.id, agent_name: agent.name, agent_role: agent.role },
+        }, state.apiKey);
+
+        if (data.session_id && !currentSessionId) {
+          currentSessionId = data.session_id;
+          dispatch({ type: 'SET_SESSION', payload: data.session_id });
+        }
+
+        dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { isTyping: false } } });
+        dispatch({ type: 'ADD_MESSAGE', payload: {
+          id: uid(), agentId: agent.id, content: data.response,
+          timestamp: new Date().toLocaleTimeString(),
+          meta: { skills: data.skills_activated, memory: data.memory_items_retrieved, tokens: data.token_breakdown, traceId: data.trace_id },
+        } });
+        if (data.token_breakdown) dispatch({ type: 'SET_TOKEN_USAGE', payload: data.token_breakdown });
+
+        agentsToRespond.filter(function(a) { return a.id !== agent.id; }).forEach(function(other) {
+          if (Math.random() > 0.5) {
+            setTimeout(function() {
+              dispatch({ type: 'UPDATE_AGENT', payload: { id: other.id, changes: { lastReaction: randomReaction() } } });
+              setTimeout(function() {
+                dispatch({ type: 'UPDATE_AGENT', payload: { id: other.id, changes: { lastReaction: null } } });
+              }, 1500);
+            }, Math.random() * 800);
+          }
+        });
+
+        return data;
+      } catch (err) {
+        dispatch({ type: 'UPDATE_AGENT', payload: { id: agent.id, changes: { isTyping: false } } });
+        dispatch({ type: 'ADD_MESSAGE', payload: { id: uid(), agentId: 'system', content: agent.name + ' error: ' + err.message, timestamp: new Date().toLocaleTimeString(), meta: null } });
+        return null;
+      }
+    }
+
+    try {
+      if (state.responseMode === 'allAtOnce') {
+        await Promise.all(agentsToRespond.map(callAgent));
+      } else {
+        for (var i = 0; i < agentsToRespond.length; i++) {
+          await callAgent(agentsToRespond[i]);
+        }
+      }
+    } finally {
+      dispatch({ type: 'SET_PROCESSING', payload: false });
+    }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  var enabledAgentIndicators = enabledAgents.map(function(a) {
+    return html`<div key=${a.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs cursor-pointer transition"
+      style=${{ background: (state.selectedAgentId === a.id ? a.color + '25' : 'transparent'),
+                border: '1px solid ' + (state.selectedAgentId === a.id ? a.color + '50' : 'transparent'),
+                color: a.color }}
+      onClick=${function() { dispatch({ type: 'SET_SELECTED_AGENT', payload: a.id }); }}>
+      <span>${a.emoji}</span>
+      <span className="font-medium">${a.name}</span>
+      ${a.isTyping ? html`<i className="fas fa-circle-notch fa-spin text-xs ml-0.5"></i>` : null}
+    </div>`;
+  });
+
+  return html`
+    <div className="flex flex-col flex-1 min-w-0">
+      <!-- Active agents bar -->
+      <div className="flex items-center gap-2 px-4 py-2 surface overflow-x-auto" style=${{ borderBottom: '1px solid var(--border)' }}>
+        <span className="text-xs flex-shrink-0" style=${{ color: 'var(--text-muted)' }}>Active:</span>
+        ${enabledAgentIndicators}
+        ${state.tokenUsage ? html`
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs" style=${{ color: 'var(--text-muted)' }}><i className="fas fa-coins mr-1"></i>${state.tokenUsage.total} tok</span>
+            <div className="w-20 h-1.5 rounded-full" style=${{ background: 'var(--bg-surface)' }}>
+              <div className="h-full rounded-full transition-all" style=${{ width: Math.min(100, (state.tokenUsage.total / 8000) * 100) + '%', background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }}></div>
+            </div>
+          </div>
+        ` : null}
+      </div>
+
+      <!-- Messages -->
+      <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+        ${state.messages.length === 0 ? html`
+          <div className="flex flex-col items-center justify-center h-full text-center" style=${{ color: 'var(--text-muted)' }}>
+            <div className="text-5xl mb-4">🏰</div>
+            <div className="text-lg font-bold mb-1" style=${{ color: 'var(--text-heading)' }}>Welcome to the Tavern</div>
+            <div className="text-sm mb-3 max-w-md">A chaotic gathering of AI agents, each with their own personality. Enable agents in the sidebar, type a message, and watch the magic unfold.</div>
+            <div className="flex gap-2 flex-wrap justify-center">
+              ${enabledAgents.slice(0, 3).map(function(a) {
+                return html`<span key=${a.id} className="text-xs px-2 py-1 rounded-full" style=${{ background: a.color + '15', border: '1px solid ' + a.color + '30', color: a.color }}>
+                  ${a.emoji} ${a.name}
+                </span>`;
+              })}
+            </div>
+            <div className="text-xs mt-4" style=${{ color: 'var(--text-muted)' }}>Shift+Enter for newline · ${state.responseMode} mode</div>
+          </div>
+        ` : null}
+        ${state.messages.map(function(msg) {
+          return html`<${MessageBubble} key=${msg.id} msg=${msg} agents=${state.agents} />`;
+        })}
+        ${typingAgents.map(function(a) {
+          return html`<${TypingIndicator} key=${'typing-' + a.id} agent=${a} />`;
+        })}
+        <div ref=${messagesEndRef}></div>
+      </div>
+
+      <!-- Input -->
+      <div className="p-3 surface" style=${{ borderTop: '1px solid var(--border)' }}>
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <textarea ref=${inputRef} value=${text} onInput=${function(e) { setText(e.target.value); }}
+              onKeyDown=${handleKeyDown}
+              placeholder=${"Message the tavern" + (state.responseMode === 'single' && state.selectedAgentId ? ' (' + (state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).name + ')' : '') + "..."}
+              className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+              rows="2" disabled=${state.isProcessing}
+              style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          </div>
+          <button onClick=${sendMessage} disabled=${state.isProcessing || !text.trim()}
+            className="px-4 rounded-lg text-sm font-medium transition flex items-center gap-2 glow"
+            style=${{ background: state.isProcessing ? 'var(--primary-dim)' : 'var(--primary)',
+                      color: '#fff', border: '1px solid var(--primary)', opacity: state.isProcessing ? 0.6 : 1 }}>
+            ${state.isProcessing ? html`<i className="fas fa-circle-notch fa-spin"></i>` : html`<i className="fas fa-paper-plane"></i>`}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 mt-1.5 text-xs" style=${{ color: 'var(--text-muted)' }}>
+          <span>Shift+Enter for newline</span>
+          <span>·</span>
+          <span className="capitalize">${state.responseMode} mode</span>
+          ${state.responseMode === 'single' ? html`
+            <span>·</span>
+            <span style=${{ color: (state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).color || 'var(--primary)' }}>
+              ${(state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).emoji || ''} ${(state.agents.find(function(a){return a.id===state.selectedAgentId})||{}).name || 'None'}
+            </span>
+          ` : null}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Context Panel ───────────────────────────────────────────
+function ContextPanel() {
+  var ctx = useContext(AppContext);
+  var state = ctx.state, dispatch = ctx.dispatch;
+  var summaryLoading = useState(false), isSummarizing = summaryLoading[0], setSummarizing = summaryLoading[1];
+  var memLoading = useState(false), isLoadingMem = memLoading[0], setLoadingMem = memLoading[1];
+
+  if (!state.contextPanelOpen) return null;
+
+  async function loadMemories() {
+    if (!state.sessionId) { showToast('No active session yet', true); return; }
+    setLoadingMem(true);
+    try {
+      var data = await apiGet('/api/memory?session_id=' + state.sessionId + '&limit=20', state.apiKey);
+      dispatch({ type: 'SET_CONTEXT_MEMORIES', payload: data.items || [] });
+    } catch (err) {
+      showToast('Memory load error: ' + err.message, true);
+    } finally { setLoadingMem(false); }
+  }
+
+  async function generateRecap() {
+    if (!state.sessionId) { showToast('No active session yet', true); return; }
+    setSummarizing(true);
+    try {
+      var data = await apiPost('/api/chat', {
+        message: '[SYSTEM: Generate a concise summary of the conversation so far. Highlight key topics, decisions, and open questions. Format as bullet points.]',
+        session_id: state.sessionId,
+        loadout_id: 'fast',
+      }, state.apiKey);
+      dispatch({ type: 'SET_CONTEXT_SUMMARY', payload: data.response });
+    } catch (err) {
+      showToast('Recap error: ' + err.message, true);
+    } finally { setSummarizing(false); }
+  }
+
+  var enabledAgents = state.agents.filter(function(a) { return a.enabled; });
+  var messageCount = state.messages.length;
+  var agentMsgCounts = {};
+  state.messages.forEach(function(m) {
+    if (m.agentId !== 'user' && m.agentId !== 'system') {
+      agentMsgCounts[m.agentId] = (agentMsgCounts[m.agentId] || 0) + 1;
+    }
+  });
+
+  return html`
+    <aside className="flex flex-col w-72 flex-shrink-0 surface overflow-hidden"
+      style=${{ borderLeft: '1px solid var(--border)' }}>
+      <div className="p-3" style=${{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>
+            <i className="fas fa-brain mr-1.5" style=${{ color: 'var(--primary)' }}></i>Context Panel
+          </div>
+          <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${messageCount} msgs</div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        <!-- Agent Activity -->
+        <div>
+          <div className="text-xs font-bold mb-2" style=${{ color: 'var(--text-heading)' }}>Agent Activity</div>
+          ${enabledAgents.map(function(a) {
+            var count = agentMsgCounts[a.id] || 0;
+            return html`<div key=${a.id} className="flex items-center gap-2 mb-1.5">
+              <span className="text-sm">${a.emoji}</span>
+              <span className="text-xs flex-1" style=${{ color: a.color }}>${a.name}</span>
+              <div className="w-16 h-1 rounded-full" style=${{ background: 'var(--bg-elevated)' }}>
+                <div className="h-full rounded-full" style=${{ width: Math.min(100, count * 15) + '%', background: a.color }}></div>
+              </div>
+              <span className="text-xs w-5 text-right" style=${{ color: 'var(--text-muted)' }}>${count}</span>
+            </div>`;
+          })}
+        </div>
+
+        <!-- Context Summary -->
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Context Summary</div>
+            <button onClick=${generateRecap} disabled=${isSummarizing}
+              className="text-xs px-2 py-0.5 rounded transition"
+              style=${{ background: 'var(--primary-dim)', color: 'var(--primary)', border: '1px solid var(--primary)' }}>
+              ${isSummarizing ? html`<i className="fas fa-circle-notch fa-spin mr-1"></i>` : html`<i className="fas fa-sync mr-1"></i>`}
+              Recap
+            </button>
+          </div>
+          ${state.contextSummary ? html`
+            <div className="text-xs p-2 rounded leading-relaxed" style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              dangerouslySetInnerHTML=${{ __html: escapeHtml(state.contextSummary).replace(/\n/g, '<br>') }}></div>
+          ` : html`
+            <div className="text-xs p-2 rounded italic" style=${{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+              No summary yet. Click Recap after chatting.
+            </div>
+          `}
+        </div>
+
+        <!-- Shared Memory -->
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-bold" style=${{ color: 'var(--text-heading)' }}>Shared Memory</div>
+            <button onClick=${loadMemories} disabled=${isLoadingMem}
+              className="text-xs px-2 py-0.5 rounded transition"
+              style=${{ background: 'var(--secondary-dim)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}>
+              ${isLoadingMem ? html`<i className="fas fa-circle-notch fa-spin mr-1"></i>` : html`<i className="fas fa-download mr-1"></i>`}
+              Load
+            </button>
+          </div>
+          ${state.contextMemories.length > 0 ? state.contextMemories.map(function(mem) {
+            var typeColors = { episodic: 'var(--primary)', semantic: '#3b82f6', summary: 'var(--secondary)' };
+            return html`<div key=${mem.id} className="p-2 rounded mb-1.5 text-xs" style=${{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="px-1 py-0.5 rounded" style=${{ background: (typeColors[mem.type] || 'var(--text-muted)') + '20', color: typeColors[mem.type] || 'var(--text-muted)' }}>${mem.type}</span>
+                <span style=${{ color: 'var(--text-muted)' }}>${mem.scope}</span>
+                <span className="ml-auto" style=${{ color: 'var(--text-muted)' }}>${mem.token_count || 0}t</span>
+              </div>
+              <div style=${{ color: 'var(--text)' }}>${mem.content.length > 120 ? mem.content.slice(0, 120) + '...' : mem.content}</div>
+            </div>`;
+          }) : html`
+            <div className="text-xs p-2 rounded italic" style=${{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+              Click Load to fetch session memories.
+            </div>
+          `}
+        </div>
+
+        <!-- Token Breakdown -->
+        ${state.tokenUsage ? html`
+          <div>
+            <div className="text-xs font-bold mb-2" style=${{ color: 'var(--text-heading)' }}>Token Breakdown</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              ${[['System', state.tokenUsage.system], ['Context', state.tokenUsage.context],
+                ['History', state.tokenUsage.history], ['Message', state.tokenUsage.user_message]].map(function(pair) {
+                return html`<div key=${pair[0]} className="p-2 rounded text-center" style=${{ background: 'var(--bg-elevated)' }}>
+                  <div className="text-xs" style=${{ color: 'var(--text-muted)' }}>${pair[0]}</div>
+                  <div className="text-sm font-mono font-bold" style=${{ color: 'var(--text-heading)' }}>${pair[1] || 0}</div>
+                </div>`;
+              })}
+            </div>
+          </div>
+        ` : null}
+      </div>
+    </aside>`;
+}
+
+// ── App Root ────────────────────────────────────────────────
+function App() {
+  var stateAndDispatch = useReducer(appReducer, initialState);
+  var state = stateAndDispatch[0], dispatch = stateAndDispatch[1];
+
+  useEffect(function() {
+    document.documentElement.setAttribute('data-theme', state.theme);
+  }, [state.theme]);
+
+  useEffect(function() {
+    async function check() {
+      try {
+        var r = await fetch('/api/health');
+        var d = await r.json();
+        dispatch({ type: 'SET_HEALTH', payload: { status: d.status, ready: !!d.model_configured } });
+      } catch (e) {
+        dispatch({ type: 'SET_HEALTH', payload: { status: 'error', ready: false } });
+      }
+    }
+    check();
+    var interval = setInterval(check, 30000);
+    return function() { clearInterval(interval); };
+  }, []);
+
+  var ctxValue = useMemo(function() { return { state: state, dispatch: dispatch }; }, [state]);
+
+  return html`
+    <${AppContext.Provider} value=${ctxValue}>
+      <div className="h-screen flex flex-col">
+        <${TopBar} />
+        <div className="flex flex-1 overflow-hidden">
+          <${AgentSidebar} />
+          <${ChatArea} />
+          <${ContextPanel} />
+        </div>
+      </div>
+    <//>`;
+}
+
+// ── Mount ───────────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+
+  </script>
+</body>
+</html>

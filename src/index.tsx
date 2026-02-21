@@ -12,6 +12,7 @@ import { memory } from './routes/memory'
 import { traces } from './routes/traces'
 import { projects } from './routes/projects'
 import { StorageService } from './services/storage'
+import tavernHtml from './frontend/tavern.html?raw'
 
 export type Env = {
   DB: D1Database
@@ -103,12 +104,17 @@ app.get('/favicon.ico', (c) => {
 // ── Static files ──────────────────────────────────────────────
 app.use('/static/*', serveStatic({ root: './' }))
 
-// ── Frontend Dashboard ────────────────────────────────────────
+// ── Frontend — Silly Tavern multi-agent UI ───────────────────
 app.get('/', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(tavernHtml)
 })
 
 app.get('/playground', (c) => {
+  return c.html(tavernHtml)
+})
+
+// ── Classic Dashboard (legacy) ───────────────────────────────
+app.get('/classic', (c) => {
   return c.html(getDashboardHTML())
 })
 
