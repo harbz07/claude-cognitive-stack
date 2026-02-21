@@ -335,11 +335,13 @@ html, body {
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
   border: 1px solid transparent;
   position: relative;
+  animation: slide-in 0.2s ease;
 }
-.agent-card:hover { background: var(--bg-surface-hover); }
+@keyframes slide-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.agent-card:hover { background: var(--bg-surface-hover); transform: translateX(2px); }
 .agent-card.active { background: var(--bg-surface); border-color: var(--border-bright); }
 .agent-card.disabled { opacity: 0.4; }
 
@@ -870,6 +872,28 @@ html, body {
 .nav-tab:hover { color: var(--text-secondary); }
 .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+/* ── Agent processing pulse ────────────────────────────────── */
+.agent-card.processing .agent-avatar {
+  animation: agent-pulse 1s ease-in-out infinite;
+}
+@keyframes agent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent); }
+  50% { box-shadow: 0 0 12px 4px var(--accent); }
+}
+
+/* ── Message reactions ────────────────────────────────────── */
+.reaction-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  cursor: default;
+  transition: transform 0.15s;
+}
+.reaction-bubble:hover { transform: scale(1.15); }
+
 /* ── Toast Notifications ──────────────────────────────────── */
 .toast {
   position: fixed;
@@ -890,18 +914,43 @@ html, body {
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(10px); } }
 
-/* ── Theme-specific glow on terminal ──────────────────────── */
+/* ── Theme-specific effects ────────────────────────────────── */
 [data-theme="terminal"] .message-body {
   text-shadow: 0 0 1px rgba(34,197,94,0.2);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 [data-theme="terminal"] .topbar-brand .brand-text {
   text-shadow: 0 0 4px rgba(34,197,94,0.4);
+  font-family: 'JetBrains Mono', monospace;
 }
+[data-theme="terminal"] .chat-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.03) 0px,
+    rgba(0,0,0,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+[data-theme="terminal"] .chat-panel { position: relative; }
+
 [data-theme="cyberpunk"] .topbar-brand .brand-text {
   text-shadow: 0 0 4px rgba(253,224,71,0.3);
 }
+[data-theme="cyberpunk"] .message.from-agent .message-body {
+  border-left: 2px solid var(--accent-secondary);
+}
+
 [data-theme="neon"] .topbar-brand .brand-text {
   text-shadow: 0 0 4px rgba(168,85,247,0.3);
+}
+[data-theme="neon"] .agent-card.active {
+  box-shadow: inset 0 0 20px rgba(168,85,247,0.05);
 }
 
 /* ── Settings drawer ──────────────────────────────────────── */

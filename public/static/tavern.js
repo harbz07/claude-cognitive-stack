@@ -159,6 +159,9 @@ function updateSessionDisplay() {
 // ── Agent Management ──────────────────────────────────────────
 function renderAgentList() {
   const list = document.getElementById('agent-list');
+  const countLabel = document.getElementById('agent-count-label');
+  const enabled = getEnabledAgents();
+  countLabel.textContent = `${enabled.length} of ${state.agents.length} active`;
   list.innerHTML = '';
   state.agents.forEach((agent, idx) => {
     const card = document.createElement('div');
@@ -350,8 +353,40 @@ function formatContent(text) {
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   html = html.replace(/\n/g, '<br>');
   return html;
+}
+
+const REACTION_EMOJIS = ['\u{1F44D}', '\u{1F525}', '\u{1F914}', '\u{1F4A1}', '\u{1F60F}', '\u{1F648}', '\u{2728}', '\u{1F3AF}'];
+
+function getRandomReactions(agentEmoji, count) {
+  const pool = REACTION_EMOJIS.filter(e => e !== agentEmoji);
+  const shuffled = pool.sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
+
+function addReactionBubbles(msgEl, senderAgent) {
+  const enabled = getEnabledAgents().filter(a => a.id !== senderAgent?.id);
+  if (enabled.length === 0) return;
+
+  const reactors = enabled.filter(() => Math.random() > 0.55).slice(0, 3);
+  if (reactors.length === 0) return;
+
+  const container = document.createElement('div');
+  container.style.cssText = 'display:flex;gap:4px;margin-top:6px;opacity:0;transition:opacity 0.5s';
+  reactors.forEach(agent => {
+    const reaction = REACTION_EMOJIS[Math.floor(Math.random() * REACTION_EMOJIS.length)];
+    const bubble = document.createElement('span');
+    bubble.style.cssText = `font-size:12px;padding:2px 6px;border-radius:10px;background:${agent.color}15;border:1px solid ${agent.color}30;cursor:default`;
+    bubble.title = `${agent.name} reacted`;
+    bubble.textContent = `${agent.emoji}${reaction}`;
+    container.appendChild(bubble);
+  });
+
+  const body = msgEl.querySelector('.message-body');
+  if (body) body.appendChild(container);
+  setTimeout(() => { container.style.opacity = '1'; }, 100);
 }
 
 function appendThinking(agentName, agentEmoji, agentColor) {
@@ -445,6 +480,11 @@ async function sendMessage() {
       };
       state.messages.push(agentMsg);
       renderMessages();
+
+      const lastMsgEl = document.getElementById('chat-messages').lastElementChild;
+      if (lastMsgEl && targets.length > 1) {
+        setTimeout(() => addReactionBubbles(lastMsgEl, agent), 400);
+      }
 
       if (data.session_id && !state.sessionId) {
         state.sessionId = data.session_id;
@@ -550,21 +590,26 @@ function renderContextPanel() {
 }
 
 function extractTopics(text) {
-  const words = text.split(/\s+/);
   const candidates = [];
-  for (let i = 0; i < words.length - 1; i++) {
-    const w = words[i].replace(/[^a-zA-Z]/g, '');
-    if (w.length > 5 && w[0] === w[0].toUpperCase()) {
-      candidates.push(w);
+
+  const phrases = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/g) || [];
+  candidates.push(...phrases.slice(0, 2));
+
+  const words = text.split(/\s+/);
+  const STOP_WORDS = new Set(['about','after','again','could','should','would','their','there','these','those','where','which','while','being','going','having','doing','based','using','first','other']);
+  for (const w of words) {
+    const clean = w.replace(/[^a-zA-Z-]/g, '');
+    if (clean.length > 6 && !STOP_WORDS.has(clean.toLowerCase()) && /^[A-Z]/.test(clean)) {
+      candidates.push(clean);
     }
   }
 
-  const phrases = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g) || [];
-  candidates.push(...phrases);
+  const quotedTerms = text.match(/"([^"]{3,30})"/g) || [];
+  quotedTerms.forEach(t => candidates.push(t.replace(/"/g, '')));
 
   const unique = [...new Set(candidates)].slice(0, 3);
   unique.forEach(t => {
-    if (!state.contextTopics.includes(t) && state.contextTopics.length < 20) {
+    if (!state.contextTopics.includes(t) && state.contextTopics.length < 25) {
       state.contextTopics.push(t);
     }
   });
