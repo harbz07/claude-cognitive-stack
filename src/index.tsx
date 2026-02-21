@@ -12,6 +12,7 @@ import { memory } from './routes/memory'
 import { traces } from './routes/traces'
 import { projects } from './routes/projects'
 import { StorageService } from './services/storage'
+import { getMultiAgentDashboardHTML } from './dashboard-ui'
 
 export type Env = {
   DB: D1Database
@@ -105,11 +106,11 @@ app.use('/static/*', serveStatic({ root: './' }))
 
 // ── Frontend Dashboard ────────────────────────────────────────
 app.get('/', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(getMultiAgentDashboardHTML())
 })
 
 app.get('/playground', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(getMultiAgentDashboardHTML())
 })
 
 function getDashboardHTML(): string {
