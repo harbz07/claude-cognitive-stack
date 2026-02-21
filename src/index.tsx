@@ -103,16 +103,48 @@ app.get('/favicon.ico', (c) => {
 // ── Static files ──────────────────────────────────────────────
 app.use('/static/*', serveStatic({ root: './' }))
 
-// ── Frontend Dashboard ────────────────────────────────────────
+// ── Frontend: Silly Tavern (multi-agent chat) ────────────────
 app.get('/', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(getTavernHTML())
+})
+
+app.get('/tavern', (c) => {
+  return c.html(getTavernHTML())
+})
+
+// ── Legacy Dashboard ─────────────────────────────────────────
+app.get('/legacy', (c) => {
+  return c.html(getLegacyDashboardHTML())
 })
 
 app.get('/playground', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(getLegacyDashboardHTML())
 })
 
-function getDashboardHTML(): string {
+function getTavernHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Soul OS — Silly Tavern</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="/static/tavern.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="/static/tavern.js"></script>
+</body>
+</html>`
+}
+
+function getLegacyDashboardHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
