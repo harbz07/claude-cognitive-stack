@@ -979,13 +979,19 @@ select.input-sm {
 .welcome-agent-chip {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 6px 14px;
   border-radius: 20px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   font-size: 11px;
   color: var(--text-muted);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.welcome-agent-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-primary);
 }
 
 /* ── Health Dot ─────────────────────────────────────────────── */
@@ -1038,6 +1044,37 @@ select.input-sm {
 
 [data-theme="haunted"] .message-content {
   text-shadow: 0 0 2px rgba(51,255,51,0.3);
+  font-family: 'Courier New', 'Fira Code', monospace;
+  animation: flicker 8s linear infinite;
+}
+
+[data-theme="haunted"] .tavern-header {
+  border-bottom: 1px solid rgba(51,255,51,0.15);
+}
+
+[data-theme="haunted"] .logo-text,
+[data-theme="haunted"] .welcome-title {
+  text-shadow: 0 0 8px rgba(51,255,51,0.5);
+  animation: glitch-shift 10s linear infinite;
+}
+
+/* ── Midnight Theme Special: Calm glow ──────────────────────── */
+[data-theme="midnight"] .logo-icon {
+  box-shadow: 0 0 15px rgba(96,165,250,0.2);
+}
+
+[data-theme="midnight"] .tavern-header {
+  border-bottom: 1px solid rgba(96,165,250,0.1);
+}
+
+/* ── Neon Theme Special: Glow header ────────────────────────── */
+[data-theme="neon"] .tavern-header {
+  border-bottom: 1px solid rgba(0,255,136,0.2);
+  box-shadow: 0 1px 20px rgba(0,255,136,0.05);
+}
+
+[data-theme="neon"] .logo-icon {
+  box-shadow: 0 0 20px rgba(0,255,136,0.3), 0 0 40px rgba(255,0,255,0.1);
 }
 
 /* ── Cyberpunk Theme Special: Angular borders ───────────────── */
@@ -1047,6 +1084,16 @@ select.input-sm {
 
 [data-theme="cyberpunk"] .agent-card {
   border-radius: 2px 8px 8px 2px;
+}
+
+[data-theme="cyberpunk"] .tavern-header {
+  background: linear-gradient(135deg, rgba(26,10,46,0.95), rgba(46,24,86,0.85));
+  border-bottom: 2px solid rgba(255,107,53,0.3);
+}
+
+[data-theme="cyberpunk"] .logo-icon {
+  clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+  border-radius: 2px;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */
@@ -1083,6 +1130,19 @@ select.input-sm {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes flicker {
+  0%, 97%, 100% { opacity: 1; }
+  98% { opacity: 0.85; }
+  99% { opacity: 0.95; }
+}
+
+@keyframes glitch-shift {
+  0%, 95%, 100% { transform: translateX(0); }
+  96% { transform: translateX(-1px); }
+  97% { transform: translateX(1px); }
+  98% { transform: translateX(0); }
 }
 
 /* ── Utility ────────────────────────────────────────────────── */

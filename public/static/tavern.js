@@ -91,9 +91,14 @@ async function apiGet(path, apiKey) {
 }
 
 // ── Build Context for Agent ────────────────────────────────────
+function truncate(text, maxLen) {
+  if (!text || text.length <= maxLen) return text
+  return text.slice(0, maxLen) + '...'
+}
+
 function buildAgentContext(agent, allAgents, messages, currentMessage) {
   const otherActive = allAgents.filter(a => a.enabled && a.id !== agent.id)
-  const recent = messages.slice(-30)
+  const recent = messages.slice(-20)
 
   let ctx = `[MULTI-AGENT CONVERSATION — You are ${agent.name}, the ${agent.role}]\n`
   ctx += `Personality: ${agent.personality}\n\n`
@@ -105,11 +110,12 @@ function buildAgentContext(agent, allAgents, messages, currentMessage) {
   if (recent.length > 0) {
     ctx += '=== Recent Conversation ===\n'
     for (const msg of recent) {
+      const content = truncate(msg.content, 500)
       if (msg.role === 'user') {
-        ctx += `User: ${msg.content}\n`
+        ctx += `User: ${content}\n`
       } else if (msg.role === 'agent') {
         const a = allAgents.find(x => x.id === msg.agentId)
-        ctx += `${a ? a.name : 'Agent'} (${a ? a.role : '?'}): ${msg.content}\n`
+        ctx += `${a ? a.name : 'Agent'} (${a ? a.role : '?'}): ${content}\n`
       }
     }
     ctx += '\n'
@@ -353,23 +359,27 @@ function TypingIndicator({ agent }) {
 
 // ── Welcome Screen ─────────────────────────────────────────────
 function WelcomeScreen({ agents }) {
+  const enabled = agents.filter(a => a.enabled)
   return html`<div className="welcome-screen">
-    <div className="welcome-icon">\u{1F3ED}</div>
-    <div className="welcome-title">Soul OS \u2014 Silly Tavern</div>
+    <div className="welcome-icon">\u{1F3AD}</div>
+    <div className="welcome-title">The Tavern Awaits</div>
     <div className="welcome-subtitle">
-      A multi-agent conversation engine. Enable your agents, type a message,
-      and watch them discuss, debate, and riff off each other.
+      ${enabled.length} agent${enabled.length !== 1 ? 's' : ''} seated at the table, ready to discuss,
+      debate, and riff off each other. Type a message to start the conversation.
     </div>
     <div className="welcome-agents">
-      ${agents.filter(a => a.enabled).map(a => html`
-        <div key=${a.id} className="welcome-agent-chip">
+      ${enabled.map(a => html`
+        <div key=${a.id} className="welcome-agent-chip"
+          style=${{ borderColor: a.color + '40' }}>
           <span>${a.avatar}</span>
-          <span>${a.name}</span>
+          <span style=${{ color: a.color }}>${a.name}</span>
+          <span className="text-dim">${a.role}</span>
         </div>
       `)}
     </div>
-    <div className="text-xxs text-dim" style=${{ marginTop: '12px' }}>
-      Set your API key in the header, then send a message to begin.
+    <div className="text-xxs text-dim" style=${{ marginTop: '16px', maxWidth: '320px', lineHeight: '1.5' }}>
+      Use the sidebar to toggle agents, edit their personalities, or assign new roles.
+      Set your API key in the header to connect.
     </div>
   </div>`
 }
@@ -472,7 +482,6 @@ function ChatInput({ onSend, isDisabled, agents, mode, targetAgents, setTargetAg
 
 // ── Context Panel ──────────────────────────────────────────────
 function ContextPanel({ messages, agents, contextSummary, onRecap, isRecapping, show }) {
-  const agentSessions = agents.filter(a => a.enabled && a.sessionId)
   const messageCount = messages.length
   const agentMsgCounts = {}
   messages.forEach(m => {
@@ -532,13 +541,25 @@ function ContextPanel({ messages, agents, contextSummary, onRecap, isRecapping, 
   </div>`
 }
 
+const STOP_WORDS = new Set([
+  'about','above','after','again','against','because','before','being',
+  'below','between','could','does','doing','during','every','first',
+  'further','going','having','itself','might','myself','never','other',
+  'really','should','something','their','there','these','thing','think',
+  'those','through','under','until','very','where','which','while',
+  'without','would','yourself','respond','character','concise','engaging',
+  'conversation','message','current','participants','personality','recent',
+])
+
 function extractTopics(messages) {
-  const text = messages.map(m => m.content).join(' ').toLowerCase()
-  const words = text.split(/\s+/).filter(w => w.length > 5)
+  const text = messages.filter(m => m.role === 'user' || m.role === 'agent').map(m => m.content).join(' ').toLowerCase()
+  const words = text.split(/\s+/)
   const freq = {}
   words.forEach(w => {
     const clean = w.replace(/[^a-z]/g, '')
-    if (clean.length > 5) freq[clean] = (freq[clean] || 0) + 1
+    if (clean.length > 4 && !STOP_WORDS.has(clean)) {
+      freq[clean] = (freq[clean] || 0) + 1
+    }
   })
   return Object.entries(freq)
     .filter(([, c]) => c >= 2)
@@ -564,7 +585,7 @@ function Header({ theme, setTheme, mode, setMode, apiKey, setApiKey, showContext
 
   return html`<header className="tavern-header">
     <div className="logo">
-      <div className="logo-icon">\u{1F3ED}</div>
+      <div className="logo-icon">\u{1F3AD}</div>
       <span className="logo-text">Soul OS</span>
       <span className="logo-sub">Silly Tavern</span>
     </div>
@@ -597,7 +618,11 @@ function App() {
       const saved = localStorage.getItem('tavern_agents')
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(a => ({
+            enabled: true, sessionId: null, ...a,
+          }))
+        }
       }
     } catch {}
     return DEFAULT_AGENTS.map(a => ({ ...a, enabled: true, sessionId: null }))
@@ -611,7 +636,7 @@ function App() {
   const [contextSummary, setContextSummary] = useState('')
   const [isRecapping, setIsRecapping] = useState(false)
   const [editingAgent, setEditingAgent] = useState(null)
-  const abortRef = useRef(null)
+  const [loadout, setLoadout] = useState('default')
 
   // Persist theme
   useEffect(() => {
@@ -677,7 +702,7 @@ function App() {
         const data = await apiPost('/api/chat', {
           message: contextMsg,
           session_id: agent.sessionId || undefined,
-          loadout_id: 'default',
+          loadout_id: loadout,
           metadata: { agent_id: agent.id, agent_role: agent.role, multi_agent: true },
         }, apiKey)
 
@@ -705,7 +730,7 @@ function App() {
 
       setProcessing(prev => ({ ...prev, [agent.id]: false }))
     }
-  }, [agents, messages, mode, targetAgents, apiKey, addMessage, updateAgent])
+  }, [agents, messages, mode, targetAgents, apiKey, loadout, addMessage, updateAgent])
 
   // ── Recap ────────────────────────────────────────────────────
   const generateRecap = useCallback(async () => {
@@ -761,6 +786,11 @@ function App() {
             <span className="text-xxs text-dim">${messages.length} messages</span>
           </div>
           <div className="flex items-center gap-2">
+            <select className="input-sm" value=${loadout} onChange=${e => setLoadout(e.target.value)}>
+              <option value="default">\u2699\uFE0F Default</option>
+              <option value="fast">\u26A1 Fast</option>
+              <option value="deep">\u{1F9E0} Deep</option>
+            </select>
             ${messages.length > 0 && html`
               <button className="btn btn-sm btn-danger" onClick=${resetSessions}>
                 <i className="fas fa-trash" style=${{ marginRight: '4px' }}></i> Clear
