@@ -159,21 +159,22 @@ Tag new facts with the project context when relevant.`,
   },
 ]
 
-// ─── Anthropic model map ─────────────────────────────────────
+// ─── Anthropic model map (MindBridge API) ───────────────────
+// Using MindBridge unified API at api.soul-os.cc
 export const MODEL_MAP: Record<string, string> = {
-  default: 'claude-sonnet-4-5',
-  fast: 'claude-haiku-4-5',
-  deep: 'claude-opus-4-5',
-  code: 'claude-sonnet-4-5',
+  default: 'mindbridge:anthropic/claude-sonnet-4-6',
+  fast: 'mindbridge:anthropic/claude-3-5-haiku-20241022',
+  deep: 'mindbridge:anthropic/claude-opus-4-6',
+  code: 'mindbridge:anthropic/claude-sonnet-4-6',
 }
 
-// ─── OpenAI-compatible model map (Genspark proxy) ────────────
-// Note: These are reasoning models — use 1500+ max_tokens
+// ─── OpenAI-compatible model map (MindBridge API) ────────────
+// Using MindBridge unified API at api.soul-os.cc
 export const OPENAI_MODEL_MAP: Record<string, string> = {
-  default: 'gpt-5',
-  fast: 'gpt-5-mini',
-  deep: 'gpt-5',
-  code: 'gpt-5',
+  default: 'mindbridge:openai/gpt-4o',
+  fast: 'mindbridge:openai/gpt-4o-mini',
+  deep: 'mindbridge:openai/o1',
+  code: 'mindbridge:openai/gpt-4o',
 }
 
 export const LOADOUT_MAP: Record<string, Loadout> = {

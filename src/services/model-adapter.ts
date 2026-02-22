@@ -36,13 +36,15 @@ function buildContextBlock(prompt: AssembledPrompt): string {
   }
   lines.push('</retrieved_context>')
   return lines.join('\n')
-}
-
-// ── OpenAI-compatible path ────────────────────────────────────
+// ── OpenAI-compatible path (MindBridge unified API) ────────────────────────────────────────────
 async function generateOpenAI(params: GenerateParams): Promise<GenerateResult> {
-  const { prompt, model_profile, api_key, base_url, max_tokens = 2048 } = params
+  const { prompt, model_profile, max_tokens = 2048 } = params
   const model = OPENAI_MODEL_MAP[model_profile] ?? OPENAI_MODEL_MAP.default
-
+  
+  // MindBridge API at api.soul-os.cc (no API key required at Worker level)
+  const base_url = 'https://api.soul-os.cc/v1'
+  const api_key = 'not-needed'  // MindBridge handles auth internally
+  
   const contextBlock = buildContextBlock(prompt)
   const systemContent = contextBlock
     ? `${prompt.system}\n\n${contextBlock}`
@@ -60,7 +62,6 @@ async function generateOpenAI(params: GenerateParams): Promise<GenerateResult> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${api_key}`,
     },
     body: JSON.stringify({
       model,
@@ -92,114 +93,97 @@ async function generateOpenAI(params: GenerateParams): Promise<GenerateResult> {
   }
 }
 
-// ── Anthropic path ────────────────────────────────────────────
+// ── Anthropic path (MindBridge unified API) ────────────────────────────────────────────
 async function generateAnthropic(params: GenerateParams): Promise<GenerateResult> {
-  const { prompt, model_profile, api_key, max_tokens = 2048 } = params
+  const { prompt, model_profile, max_tokens = 2048 } = params
   const model = MODEL_MAP[model_profile] ?? MODEL_MAP.default
 
+  // MindBridge API uses OpenAI-compatible format for all providers
+  const base_url = 'https://api.soul-os.cc/v1'
+  
   const contextBlock = buildContextBlock(prompt)
-  const fullSystem = contextBlock
+  const systemContent = contextBlock
     ? `${prompt.system}\n\n${contextBlock}`
     : prompt.system
 
-  const body = {
-    model,
-    max_tokens,
-    system: fullSystem,
-    messages: prompt.messages.map((m) => ({ role: m.role, content: m.content })),
-  }
+  // Use OpenAI message format (MindBridge handles provider conversion)
+  const messages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: systemContent },
+    ...prompt.messages.map((m) => ({ role: m.role, content: m.content })),
+  ]
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch(`${base_url}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': api_key,
-      'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model,
+      max_tokens,
+      messages,
+    }),
   })
 
   if (!response.ok) {
     const errText = await response.text()
-    throw new Error(`Anthropic API error ${response.status}: ${errText}`)
+    throw new Error(`MindBridge API error ${response.status}: ${errText}`)
   }
 
   const data = await response.json() as any
+  const choice = data.choices?.[0]
+  const usage = data.usage ?? {}
 
   return {
-    response: data.content?.[0]?.text ?? '',
+    response: choice?.message?.content ?? '',
     model: data.model ?? model,
     usage: {
-      input_tokens: data.usage?.input_tokens ?? 0,
-      output_tokens: data.usage?.output_tokens ?? 0,
-      total_tokens: (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
+      input_tokens: usage.prompt_tokens ?? 0,
+      output_tokens: usage.completion_tokens ?? 0,
+      total_tokens: usage.total_tokens ?? 0,
     },
-    stop_reason: data.stop_reason ?? 'unknown',
+    stop_reason: choice?.finish_reason ?? 'unknown',
   }
 }
 
 // ── Public adapter ────────────────────────────────────────────
 export class ModelAdapter {
   async generate(params: GenerateParams): Promise<GenerateResult> {
-    if (params.base_url) {
-      return generateOpenAI(params)
+    // All models now go through MindBridge unified API
+    // Check if model starts with 'mindbridge:anthropic' to route correctly
+    const model = params.model_profile
+    if (model && (MODEL_MAP[model]?.includes('anthropic') || model.includes('anthropic'))) {
+      return generateAnthropic(params)
     }
-    return generateAnthropic(params)
+    return generateOpenAI(params)
   }
 
   async generateStream(params: GenerateParams): Promise<ReadableStream<Uint8Array>> {
-    const { prompt, model_profile, api_key, base_url, max_tokens = 2048 } = params
+    const { prompt, model_profile, max_tokens = 2048 } = params
+    const base_url = 'https://api.soul-os.cc/v1'
 
-    if (base_url) {
-      // OpenAI-compatible streaming
-      const model = OPENAI_MODEL_MAP[model_profile] ?? OPENAI_MODEL_MAP.default
-      const contextBlock = buildContextBlock(prompt)
-      const systemContent = contextBlock ? `${prompt.system}\n\n${contextBlock}` : prompt.system
-      const messages = [
-        { role: 'system', content: systemContent },
-        ...prompt.messages.map((m) => ({ role: m.role, content: m.content })),
-      ]
+    // Determine model based on profile
+    const model = MODEL_MAP[model_profile]?.includes('anthropic') 
+      ? MODEL_MAP[model_profile] ?? MODEL_MAP.default
+      : OPENAI_MODEL_MAP[model_profile] ?? OPENAI_MODEL_MAP.default
 
-      const response = await fetch(`${base_url}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${api_key}`,
-        },
-        body: JSON.stringify({ model, max_tokens, messages, stream: true }),
-      })
-
-      if (!response.ok) {
-        const errText = await response.text()
-        throw new Error(`OpenAI stream error ${response.status}: ${errText}`)
-      }
-      return response.body!
-    }
-
-    // Anthropic streaming
-    const model = MODEL_MAP[model_profile] ?? MODEL_MAP.default
     const contextBlock = buildContextBlock(prompt)
-    const fullSystem = contextBlock ? `${prompt.system}\n\n${contextBlock}` : prompt.system
+    const systemContent = contextBlock ? `${prompt.system}\n\n${contextBlock}` : prompt.system
+    const messages = [
+      { role: 'system', content: systemContent },
+      ...prompt.messages.map((m) => ({ role: m.role, content: m.content })),
+    ]
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(`${base_url}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': api_key,
-        'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({
-        model,
-        max_tokens,
-        system: fullSystem,
-        messages: prompt.messages.map((m) => ({ role: m.role, content: m.content })),
-        stream: true,
-      }),
+      body: JSON.stringify({ model, max_tokens, messages, stream: true }),
     })
 
     if (!response.ok) {
       const errText = await response.text()
-      throw new Error(`Anthropic stream error ${response.status}: ${errText}`)
+      throw new Error(`MindBridge stream error ${response.status}: ${errText}`)
     }
     return response.body!
   }
