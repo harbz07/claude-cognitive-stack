@@ -36,7 +36,9 @@ function buildContextBlock(prompt: AssembledPrompt): string {
   }
   lines.push('</retrieved_context>')
   return lines.join('\n')
-// ── OpenAI-compatible path (MindBridge unified API) ────────────────────────────────────────────
+}
+
+// ── OpenAI-compatible path (MindBridge unified API) ─────────────────────────────────────────────
 async function generateOpenAI(params: GenerateParams): Promise<GenerateResult> {
   const { prompt, model_profile, max_tokens = 2048 } = params
   const model = OPENAI_MODEL_MAP[model_profile] ?? OPENAI_MODEL_MAP.default
