@@ -8,7 +8,7 @@
     {
       "binding": "DB",
       "database_name": "cognitive-runtime-production",
-      "database_id": "local-dev"
+      "database_id": "${D1_DATABASE_ID}"
     }
   ]
   "ai": { "binding": "AI" }
