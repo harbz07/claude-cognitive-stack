@@ -41,7 +41,14 @@ chat.post('/', zValidator('json', chatSchema), async (c) => {
   }
 
   const storage = new StorageService(c.env.DB)
-  const orchestrator = new CognitiveOrchestrator(storage, c.env.AI ?? null)
+  const orchestrator = new CognitiveOrchestrator(
+    storage,
+    c.env.AI ?? null,
+    c.env.OPENAI_API_KEY,
+    c.env.OPENAI_EMBED_BASE_URL ?? c.env.OPENAI_BASE_URL,
+    c.env.SUPABASE_URL,
+    c.env.SUPABASE_SERVICE_ROLE_KEY,
+  )
 
   try {
     const response = await orchestrator.process(
@@ -56,7 +63,16 @@ chat.post('/', zValidator('json', chatSchema), async (c) => {
 
     // Fire-and-forget consolidation if queued
     if (response.consolidation_queued) {
-      const worker = new ConsolidationWorker(storage, apiKey, baseUrl, c.env.AI ?? null)
+      const worker = new ConsolidationWorker(
+        storage,
+        apiKey,
+        baseUrl,
+        c.env.AI ?? null,
+        c.env.OPENAI_API_KEY,
+        c.env.OPENAI_EMBED_BASE_URL ?? c.env.OPENAI_BASE_URL,
+        c.env.SUPABASE_URL,
+        c.env.SUPABASE_SERVICE_ROLE_KEY,
+      )
       worker.processPendingJobs().catch(() => {})
     }
 

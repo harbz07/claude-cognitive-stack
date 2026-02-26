@@ -2,12 +2,24 @@
 # Copy to .dev.vars and fill in your values:
 #   cp .dev.vars.example .dev.vars
 
+# ── LLM (chat completions) ────────────────────────────────────
 # OpenAI-compatible endpoint (Genspark proxy)
 OPENAI_API_KEY=gsk-your-key-here
 OPENAI_BASE_URL=https://www.genspark.ai/api/llm_proxy/v1
 
-# Master API key for admin endpoints
-MASTER_KEY=dev-master-key
+# Optional: separate base URL for the embeddings endpoint
+# Leave blank to use standard OpenAI (api.openai.com/v1)
+# OPENAI_EMBED_BASE_URL=https://api.openai.com/v1
 
-# Optional: Anthropic direct backend
+# Optional: Anthropic direct backend (chat completions)
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+# ── Supabase pgvector (semantic search) ───────────────────────
+# Project URL: Settings → API → Project URL
+SUPABASE_URL=https://your-project-ref.supabase.co
+
+# Service Role Key: Settings → API → service_role (keep server-side only!)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# ── Auth ──────────────────────────────────────────────────────
+MASTER_KEY=dev-master-key

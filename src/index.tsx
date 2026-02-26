@@ -11,14 +11,19 @@ import { chat } from './routes/chat'
 import { memory } from './routes/memory'
 import { traces } from './routes/traces'
 import { projects } from './routes/projects'
+import { ingest } from './routes/ingest'
+import { search } from './routes/search'
 import { StorageService } from './services/storage'
 
 export type Env = {
   DB: D1Database
-  AI: Ai                       // Cloudflare AI binding (embeddings)
-  ANTHROPIC_API_KEY: string    // optional — Anthropic direct
-  OPENAI_API_KEY: string       // OpenAI-compatible (Genspark proxy)
-  OPENAI_BASE_URL: string      // e.g. https://www.genspark.ai/api/llm_proxy/v1
+  AI: Ai                            // Cloudflare AI binding (embedding fallback)
+  ANTHROPIC_API_KEY: string         // optional — Anthropic direct
+  OPENAI_API_KEY: string            // OpenAI-compatible (Genspark proxy + embeddings)
+  OPENAI_BASE_URL: string           // e.g. https://www.genspark.ai/api/llm_proxy/v1
+  OPENAI_EMBED_BASE_URL: string     // override embed endpoint (default: standard OpenAI)
+  SUPABASE_URL: string              // https://xxxx.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY: string // server-only service_role key
   MASTER_KEY: string
   ENVIRONMENT: string
 }
@@ -49,6 +54,8 @@ app.get('/api/health', (c) => {
     db: !!c.env.DB,
     model_configured: !!(c.env.OPENAI_API_KEY || c.env.ANTHROPIC_API_KEY),
     backend: c.env.OPENAI_API_KEY ? 'openai-compatible' : c.env.ANTHROPIC_API_KEY ? 'anthropic' : 'none',
+    vector_store: !!(c.env.SUPABASE_URL && c.env.SUPABASE_SERVICE_ROLE_KEY),
+    embedding_backend: c.env.OPENAI_API_KEY ? 'openai' : c.env.AI ? 'cloudflare' : 'none',
   })
 })
 
@@ -65,11 +72,15 @@ app.use('/api/chat/*', authMiddleware)
 app.use('/api/memory/*', authMiddleware)
 app.use('/api/traces/*', authMiddleware)
 app.use('/api/projects/*', authMiddleware)
+app.use('/api/ingest/*', authMiddleware)
+app.use('/api/search/*', authMiddleware)
 
 app.route('/api/chat', chat)
 app.route('/api/memory', memory)
 app.route('/api/traces', traces)
 app.route('/api/projects', projects)
+app.route('/api/ingest', ingest)
+app.route('/api/search', search)
 
 // ── Skills list (public) ──────────────────────────────────────
 app.get('/api/skills', async (c) => {

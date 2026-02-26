@@ -117,6 +117,23 @@ export class ConsolidationWorker {
 
         if (this.insula.shouldPersistToMemory(summaryResult.memoryItem.content, permissions, 'summary')) {
           await this.storage.insertMemoryItem(summaryResult.memoryItem)
+          // Sync to pgvector
+          if (summaryEmbedding && this.vectorStore?.isConfigured()) {
+            await this.vectorStore.insert({
+              content:  summaryResult.memoryItem.content,
+              metadata: {
+                memory_id:  summaryResult.memoryItem.id,
+                type:       summaryResult.memoryItem.type,
+                scope:      summaryResult.memoryItem.scope,
+                user_id:    summaryResult.memoryItem.user_id,
+                project_id: summaryResult.memoryItem.project_id,
+                session_id,
+                tags:       summaryResult.memoryItem.tags,
+                confidence: summaryResult.memoryItem.confidence,
+              },
+              embedding: summaryEmbedding,
+            })
+          }
           memoryDiff.added++
           memoryDiff.new_items.push(summaryResult.memoryItem.id)
         }
@@ -144,6 +161,23 @@ export class ConsolidationWorker {
         if (embedding) finalItem.embedding = embedding
         if (this.insula.shouldPersistToMemory(finalItem.content, permissions, 'semantic')) {
           await this.storage.insertMemoryItem(finalItem)
+          // Sync to pgvector
+          if (embedding && this.vectorStore?.isConfigured()) {
+            await this.vectorStore.insert({
+              content:  finalItem.content,
+              metadata: {
+                memory_id:  finalItem.id,
+                type:       finalItem.type,
+                scope:      finalItem.scope,
+                user_id:    finalItem.user_id,
+                project_id: finalItem.project_id,
+                session_id,
+                tags:       finalItem.tags,
+                confidence: finalItem.confidence,
+              },
+              embedding,
+            })
+          }
           results.semantic_candidates.push(finalItem)
           memoryDiff.added++
           memoryDiff.new_items.push(finalItem.id)
