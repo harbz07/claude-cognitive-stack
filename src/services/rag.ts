@@ -5,7 +5,7 @@
 // Sources:
 //   1. chat_index   — L1 sliding-window history
 //   2. knowledge_graph — L2 semantic + episodic memories
-//   3. project_docs — future: uploaded document chunks
+//   3. project_docs — project-scoped document chunks
 //
 // Returns ranked results with provenance / citations.
 // ============================================================
@@ -71,8 +71,17 @@ export class RagSearchService {
       allResults.push(...memoryResults)
     }
 
-    // ── Source 3: project_docs (placeholder for future docs) ──
-    // When document indexing is implemented, search here by project_id.
+    // ── Source 3: project_docs (document-sourced memories) ─────
+    if (decision.rag_sources.includes('project_docs') && project_id) {
+      const docResults = await this.searchProjectDocs({
+        query,
+        user_id,
+        session_id,
+        project_id,
+        limit: top_k * 3,
+      })
+      allResults.push(...docResults)
+    }
 
     // ── Deduplicate and score ─────────────────────────────────
     const seen = new Set<string>()
@@ -95,7 +104,9 @@ export class RagSearchService {
         source: result.source,
         source_type: result.source_type,
         message_id: result.message_id,
-        memory_id: result.source_type === 'memory' ? result.id : undefined,
+        memory_id: (result.source_type === 'memory' || result.source_type === 'document')
+          ? result.id
+          : undefined,
         relevance: result.relevance,
         content_snippet: result.content.slice(0, 120),
       }
@@ -184,12 +195,17 @@ export class RagSearchService {
       limit,
     })
 
-    if (items.length === 0) return []
+    // Document chunks are retrieved by project_docs source to keep provenance clean.
+    const memoryItems = items.filter(
+      (item) => String(item.source ?? '').toLowerCase() !== 'document',
+    )
+
+    if (memoryItems.length === 0) return []
 
     const qTokens = this.tokenize(query)
     if (qTokens.length === 0) return []
 
-    return items.map((item): RagResult => {
+    return memoryItems.map((item): RagResult => {
       const cTokens = new Set(this.tokenize(item.content))
       const textMatches = qTokens.filter((t) => cTokens.has(t)).length
       const textScore = Math.min(1, textMatches / Math.max(1, qTokens.length))
@@ -222,6 +238,66 @@ export class RagSearchService {
           tags: item.tags,
           confidence: item.confidence,
           decay_score: item.decay_score,
+          created_at: item.created_at,
+        },
+      }
+    })
+  }
+
+  // ── Project Docs Search ────────────────────────────────────────
+  // Retrieves document-sourced chunks scoped to the active project.
+  private async searchProjectDocs(params: {
+    query: string
+    user_id: string
+    session_id: string
+    project_id: string
+    limit: number
+  }): Promise<RagResult[]> {
+    const { query, user_id, session_id, project_id, limit } = params
+
+    const items = await this.storage.queryMemory({
+      user_id,
+      session_id,
+      project_id,
+      exclude_high_decay: true,
+      limit,
+    })
+
+    const docItems = items.filter(
+      (item) => String(item.source ?? '').toLowerCase() === 'document',
+    )
+    if (docItems.length === 0) return []
+
+    const qTokens = this.tokenize(query)
+    if (qTokens.length === 0) return []
+
+    return docItems.map((item): RagResult => {
+      const cTokens = new Set(this.tokenize(item.content))
+      const textMatches = qTokens.filter((t) => cTokens.has(t)).length
+      const textScore = Math.min(1, textMatches / Math.max(1, qTokens.length))
+
+      const tags: string[] = item.tags ?? []
+      const tagMatches = qTokens.filter((t) =>
+        tags.some((tag) => tag.toLowerCase().includes(t)),
+      ).length
+      const tagBoost = Math.min(0.2, tagMatches * 0.05)
+
+      const projectBoost = item.project_id === project_id ? 0.08 : 0
+      const decayPenalty = (item.decay_score ?? 0) * 0.2
+      const relevance = Math.min(1, textScore + tagBoost + projectBoost - decayPenalty)
+
+      return {
+        id: item.id,
+        content: item.content,
+        source: `project_doc_${(item.project_id ?? 'unknown').toString().slice(0, 10)}`,
+        source_type: 'document',
+        relevance,
+        token_count: item.token_count || estimateTokens(item.content),
+        metadata: {
+          memory_id: item.id,
+          project_id: item.project_id,
+          scope: item.scope,
+          tags: item.tags,
           created_at: item.created_at,
         },
       }

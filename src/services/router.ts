@@ -99,7 +99,7 @@ export class WernickeRouter {
       ragSources.push('chat_index')
     }
 
-    // Include project_docs if project context is active (future: document chunks)
+    // Include project_docs when project context is active
     if (session.project_id) {
       ragSources.push('project_docs')
     }
