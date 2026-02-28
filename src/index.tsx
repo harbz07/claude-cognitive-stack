@@ -105,14 +105,41 @@ app.use('/static/*', serveStatic({ root: './' }))
 
 // ── Frontend Dashboard ────────────────────────────────────────
 app.get('/', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(getTavernHTML())
 })
 
 app.get('/playground', (c) => {
-  return c.html(getDashboardHTML())
+  return c.html(getTavernHTML())
 })
 
-function getDashboardHTML(): string {
+// Legacy UI preserved for reference/debugging.
+app.get('/legacy', (c) => {
+  return c.html(getLegacyDashboardHTML())
+})
+
+function getTavernHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Soul-OS Tavern</title>
+  <meta name="description" content="SillyTavern-inspired multi-agent chat UI for the Cognitive Runtime Service."/>
+  <link rel="stylesheet" href="/static/tavern.css"/>
+</head>
+<body>
+  <div id="root"></div>
+  <noscript>
+    <div style="padding:16px;font-family:system-ui;background:#000;color:#fff">
+      This UI requires JavaScript.
+    </div>
+  </noscript>
+  <script type="module" src="/static/tavern-app.js"></script>
+</body>
+</html>`
+}
+
+function getLegacyDashboardHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

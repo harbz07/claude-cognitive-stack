@@ -172,11 +172,43 @@ export class CognitiveOrchestrator {
     const t3 = Date.now()
 
     // System prompt injection
+    const meta = req.metadata ?? {}
+    const agentMeta: any =
+      (meta && typeof meta === 'object' && (meta as any).agent && typeof (meta as any).agent === 'object')
+        ? (meta as any).agent
+        : null
+
+    const agentName = typeof agentMeta?.name === 'string' ? agentMeta.name.trim() : ''
+    const agentRole = typeof agentMeta?.role === 'string' ? agentMeta.role.trim() : ''
+    const agentPersonaRaw = typeof agentMeta?.persona === 'string' ? agentMeta.persona.trim() : ''
+    const agentPersona = agentPersonaRaw.length > 1200 ? agentPersonaRaw.slice(0, 1200) + '…' : agentPersonaRaw
+
+    const tavernMeta: any =
+      (meta && typeof meta === 'object' && (meta as any).tavern && typeof (meta as any).tavern === 'object')
+        ? (meta as any).tavern
+        : null
+    const sharedSummaryRaw = typeof tavernMeta?.shared_summary === 'string' ? tavernMeta.shared_summary.trim() : ''
+    const sharedSummary = sharedSummaryRaw.length > 2000 ? sharedSummaryRaw.slice(0, 2000) + '…' : sharedSummaryRaw
+
+    const agentBlock =
+      agentName || agentRole || agentPersona
+        ? `\n\n[Multi-Agent Role]\nYou are speaking as an agent in a multi-agent conversation.\n` +
+          `${agentName ? `Name: ${agentName}\n` : ''}` +
+          `${agentRole ? `Role: ${agentRole}\n` : ''}` +
+          `${agentPersona ? `Persona:\n${agentPersona}\n` : ''}` +
+          `Stay consistent with this persona unless it conflicts with safety, policy, or factual accuracy.`
+        : ''
+
+    const sharedSummaryBlock =
+      sharedSummary
+        ? `\n\n[Shared Room Summary]\n${sharedSummary}`
+        : ''
+
     const baseSystem = `You are a helpful, memory-aware AI assistant with persistent context across conversations.
 You have access to retrieved memories and conversation history.
 When referencing retrieved information, cite it explicitly.
 Current session: ${session.session_id.slice(0, 8)}...
-${session.project_id ? `Project context: ${session.project_id}` : ''}`
+${session.project_id ? `Project context: ${session.project_id}` : ''}${agentBlock}${sharedSummaryBlock}`
 
     const {
       packed,
