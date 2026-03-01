@@ -1,8 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "soul-os-frontend",
+  "name": "cognitive-runtime",
   "compatibility_date": "2026-02-19",
   "pages_build_output_dir": "./dist",
   "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cognitive-runtime-production",
+      "database_id": "${D1_DATABASE_ID}"
+    }
+  ]
   "ai": { "binding": "AI" }
 }
